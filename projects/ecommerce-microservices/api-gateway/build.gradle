@@ -1,0 +1,53 @@
+plugins {
+    id 'com.palantir.docker' version '0.35.0'
+}
+
+description = 'API Gateway with Spring Cloud Gateway'
+
+dependencies {
+    // Common module
+    implementation project(':common')
+    
+    // Spring Cloud Gateway (WebFlux 기반)
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
+    
+    // Service Discovery Client
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    
+    // Circuit Breaker
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j'
+    
+    // Redis for Rate Limiting
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+    implementation libs.redisson.spring.boot.starter
+    
+    // Security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.security:spring-security-oauth2-resource-server'
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
+    
+    // WebFlux (Reactive)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    
+    // Configuration Processor
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    
+    // Testing
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.testcontainers:redis'
+}
+
+// Gateway는 WebFlux 사용하므로 기본 Web starter 제외
+configurations.all {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-web'
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-tomcat'
+}
+
+// Docker 설정
+docker {
+    name "${project.name}:${project.version}"
+    dockerfile file('Dockerfile')
+    files bootJar.archiveFile
+    buildArgs(['JAR_FILE': "${bootJar.archiveFileName}"])
+}

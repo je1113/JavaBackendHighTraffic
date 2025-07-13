@@ -1,0 +1,175 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0' apply false
+    id 'io.spring.dependency-management' version '1.1.4' apply false
+    id 'org.sonarqube' version '4.4.1.3373'
+    id 'jacoco'
+}
+
+ext {
+    set('springCloudVersion', "2023.0.0")
+    set('testcontainersVersion', "1.19.3")
+    set('redissonVersion', "3.24.3")
+    set('jmhVersion', "1.37")
+    set('mapstructVersion', "1.5.5.Final")
+}
+
+allprojects {
+    group = 'com.hightraffic.ecommerce'
+    version = '1.0.0'
+    
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'jacoco'
+    
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+    
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+            mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+        }
+    }
+    
+    dependencies {
+        // Common Dependencies for All Modules
+        
+        // Spring Boot Starters
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        
+        // Micrometer for Metrics
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+        
+        // Spring Cloud Sleuth for Distributed Tracing
+        implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'
+        implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
+        
+        // Lombok
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        
+        // Jackson for JSON Processing
+        implementation 'com.fasterxml.jackson.core:jackson-databind'
+        implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+        
+        // Apache Commons
+        implementation "org.apache.commons:commons-lang3:3.13.0"
+        
+        // Testing Dependencies
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testImplementation 'org.testcontainers:junit-jupiter'
+        testImplementation 'org.testcontainers:postgresql'
+        testImplementation 'org.testcontainers:kafka'
+        
+        // Test Lombok
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+    }
+    
+    tasks.named('test') {
+        useJUnitPlatform()
+        finalizedBy jacocoTestReport
+    }
+    
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = true
+        }
+        finalizedBy jacocoTestCoverageVerification
+    }
+    
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    counter = 'LINE'
+                    value = 'COVEREDRATIO'
+                    minimum = 0.80
+                }
+            }
+        }
+    }
+    
+    // Spring Boot JAR 최적화
+    jar {
+        enabled = false
+        archiveClassifier = ''
+    }
+    
+    bootJar {
+        enabled = true
+        archiveClassifier = 'boot'
+        layered {
+            enabled = true
+        }
+    }
+}
+
+// Root Project Configuration
+wrapper {
+    gradleVersion = '8.5'
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+// SonarQube Configuration
+sonarqube {
+    properties {
+        property "sonar.projectKey", "ecommerce-microservices"
+        property "sonar.organization", "hightraffic"
+        property "sonar.host.url", "https://sonarcloud.io"
+        property "sonar.coverage.jacoco.xmlReportPaths", "**/build/reports/jacoco/test/jacocoTestReport.xml"
+    }
+}
+
+// Custom Tasks
+task cleanAll {
+    description = 'Clean all subprojects'
+    group = 'build'
+    
+    dependsOn subprojects.collect { "${it.name}:clean" }
+}
+
+task buildAll {
+    description = 'Build all subprojects'
+    group = 'build'
+    
+    dependsOn subprojects.collect { "${it.name}:build" }
+}
+
+task testAll {
+    description = 'Run tests for all subprojects'
+    group = 'verification'
+    
+    dependsOn subprojects.collect { "${it.name}:test" }
+}
+
+task dockerBuildAll {
+    description = 'Build Docker images for all services'
+    group = 'docker'
+    
+    dependsOn subprojects.findAll { 
+        it.name != 'common' 
+    }.collect { 
+        "${it.name}:dockerBuild" 
+    }
+}

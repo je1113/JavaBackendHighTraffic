@@ -1,0 +1,35 @@
+plugins {
+    id 'com.palantir.docker' version '0.35.0'
+}
+
+description = 'Eureka Service Discovery Server'
+
+dependencies {
+    // Spring Cloud Eureka Server
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+    
+    // Spring Boot Security for Eureka
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    
+    // Configuration Processor
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    
+    // Testing
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+// Eureka Server는 Web 환경이므로 웹 의존성 제외하지 않음
+configurations.all {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-web'
+}
+
+// Docker 설정
+docker {
+    name "${project.name}:${project.version}"
+    dockerfile file('Dockerfile')
+    files bootJar.archiveFile
+    buildArgs(['JAR_FILE': "${bootJar.archiveFileName}"])
+    
+    // Multi-platform build
+    platform 'linux/amd64', 'linux/arm64'
+}
