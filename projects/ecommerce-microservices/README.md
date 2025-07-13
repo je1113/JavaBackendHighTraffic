@@ -134,73 +134,18 @@ graph TB
    - 강한 일관성이 필요한 부분을 Aggregate로 묶음
    - 최종 일관성으로 처리 가능한 부분을 이벤트로 분리
 
-### 1. Bounded Context 정의와 분리 이유
+### 1. Domain-Driven Design 개요
 
-#### Order Context (주문 컨텍스트)
-**분리 이유**: 주문은 고객의 구매 의사를 표현하는 독립적인 개념으로, 재고 상태와 무관하게 먼저 생성되어야 함
+**도메인 모델링 상세 문서**: [DDD-Domain-Model.md](docs/DDD-Domain-Model.md)
 
-**Aggregate Root: Order**
-```
-Order (Aggregate Root)
-├── OrderId (VO) - 전역 고유 식별자
-├── CustomerId (VO) - 고객 참조
-├── OrderItems (Entity Collection)
-│   ├── ProductId - 상품 참조
-│   ├── Quantity - 주문 수량
-│   └── Price - 주문 시점 가격 (스냅샷)
-├── OrderStatus (VO) - 상태 전이 관리
-├── TotalAmount (VO) - 불변 계산값
-└── CreatedAt - 생성 시각
+#### 핵심 Bounded Context
+- **Order Context**: 주문 생명주기 관리, 고객 중심 비즈니스 로직
+- **Inventory Context**: 재고 관리, 높은 동시성 처리
 
-불변성 규칙: Order가 확정되면 OrderItems는 수정 불가
-```
-
-**Domain Events**
-- `OrderCreatedEvent`: 주문 생성 → 재고 서비스에 예약 요청
-- `OrderConfirmedEvent`: 재고 예약 성공 → 결제 프로세스 시작
-- `OrderCancelledEvent`: 주문 취소 → 예약된 재고 해제
-- `OrderCompletedEvent`: 최종 완료 → 배송 프로세스 시작
-
-#### Inventory Context (재고 컨텍스트)
-**분리 이유**: 재고는 물리적 자원을 표현하며, 동시성 제어가 핵심인 별도의 비즈니스 영역
-
-**Aggregate Root: Product**
-```
-Product (Aggregate Root)
-├── ProductId (VO) - 전역 고유 식별자
-├── ProductName - 상품명
-├── Stock (Entity) - 재고 관리 핵심
-│   ├── AvailableQuantity - 구매 가능 수량
-│   ├── ReservedQuantity - 예약된 수량
-│   └── Version - 낙관적 락을 위한 버전
-└── StockMovements (Event Store)
-    ├── MovementType - 예약/차감/복원
-    ├── Quantity - 변경 수량
-    ├── OrderId - 관련 주문
-    └── Timestamp - 발생 시각
-
-일관성 규칙: AvailableQuantity >= 0 항상 유지
-```
-
-**Domain Events**
-- `StockReservedEvent`: 재고 예약 성공 → Order 확정 가능
-- `StockDeductedEvent`: 재고 차감 완료 → 배송 준비
-- `StockRestoredEvent`: 재고 복원 → 취소 처리 완료
-- `InsufficientStockEvent`: 재고 부족 → 주문 취소 필요
-
-### 2. 도메인 규칙과 불변성
-
-#### Order Domain Rules
-1. **주문 생성 규칙**: 최소 1개 이상의 상품, 양수의 수량
-2. **상태 전이 규칙**: PENDING → CONFIRMED → COMPLETED (역방향 불가)
-3. **취소 가능 조건**: CONFIRMED 이전 상태만 가능
-4. **가격 불변성**: 주문 시점의 가격을 스냅샷으로 저장
-
-#### Inventory Domain Rules
-1. **재고 음수 방지**: 모든 트랜잭션에서 검증
-2. **예약 타임아웃**: 30분 후 자동 해제 (설정 가능)
-3. **동시성 제어**: 분산 락 + 낙관적 락 조합
-4. **감사 추적**: 모든 재고 변동 이력 보관
+#### 주요 구현 현황
+- ✅ Order Domain Events, Value Objects, Aggregate
+- ✅ Order Repository Interface, Domain Exceptions  
+- ⏳ Inventory Domain Model, Application Layer 예정
 
 ## 💻 기술 스택 선택 (RICE 점수 기반)
 
