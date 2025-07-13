@@ -1,0 +1,34 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Inventory Service Lock Adapter - Distributed Lock Implementation'
+
+dependencies {
+    // Core layers
+    implementation project(':inventory-service:application')
+    implementation project(':inventory-service:domain')
+    
+    // Redis & Redisson for distributed locking
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation libs.redisson.spring.boot.starter
+    
+    // Test dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:redis'
+    testImplementation 'org.testcontainers:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+// Library module - disable bootJar
+jar {
+    enabled = true
+    archiveClassifier = ''
+}
+
+bootJar {
+    enabled = false
+}

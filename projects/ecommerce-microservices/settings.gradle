@@ -11,8 +11,25 @@ rootProject.name = 'ecommerce-microservices'
 include 'common'
 include 'service-discovery'
 include 'api-gateway'
+
+// Order Service - Hexagonal Architecture Modules
 include 'order-service'
+include 'order-service:domain'
+include 'order-service:application'
+include 'order-service:adapter-in-web'
+include 'order-service:adapter-in-messaging'
+include 'order-service:adapter-out-persistence'
+include 'order-service:adapter-out-messaging'
+
+// Inventory Service - Hexagonal Architecture Modules  
 include 'inventory-service'
+include 'inventory-service:domain'
+include 'inventory-service:application'
+include 'inventory-service:adapter-in-web'
+include 'inventory-service:adapter-in-messaging'
+include 'inventory-service:adapter-out-persistence'
+include 'inventory-service:adapter-out-messaging'
+include 'inventory-service:adapter-out-lock'
 
 // 프로젝트 디스크립션 설정
 project(':common').projectDir = file('common')

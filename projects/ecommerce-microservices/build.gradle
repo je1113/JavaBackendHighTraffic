@@ -58,9 +58,9 @@ subprojects {
         // Micrometer for Metrics
         implementation 'io.micrometer:micrometer-registry-prometheus'
         
-        // Spring Cloud Sleuth for Distributed Tracing
-        implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'
-        implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
+        // Spring Cloud Sleuth for Distributed Tracing (will be added to specific services later)
+        // implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'
+        // implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
         
         // Lombok
         compileOnly 'org.projectlombok:lombok'

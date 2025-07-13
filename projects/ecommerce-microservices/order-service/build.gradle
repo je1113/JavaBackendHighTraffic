@@ -3,47 +3,30 @@ plugins {
     id 'org.springframework.boot'
 }
 
-description = 'Order Domain Service with DDD Architecture'
+description = 'Order Service - Hexagonal Architecture Main Application'
 
 dependencies {
-    // Common module
-    implementation project(':common')
+    // Hexagonal Architecture Modules
+    implementation project(':order-service:domain')
+    implementation project(':order-service:application')
+    implementation project(':order-service:adapter-in-web')
+    implementation project(':order-service:adapter-in-messaging')
+    implementation project(':order-service:adapter-out-persistence')
+    implementation project(':order-service:adapter-out-messaging')
     
-    // Spring Boot Web
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    
-    // Spring Data JPA & Database
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation libs.postgresql
-    
-    // Service Discovery Client  
+    // Service Discovery  
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     
-    // Kafka for Event Messaging
-    implementation 'org.springframework.kafka:spring-kafka'
+    // Monitoring
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     
-    // Redis for Caching
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation libs.redisson.spring.boot.starter
-    
-    // OpenAPI Documentation
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
-    
-    // MapStruct for DTO Mapping
-    implementation libs.mapstruct
-    annotationProcessor libs.mapstruct.processor
-    
-    // Configuration Processor
+    // Configuration
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     
-    // Testing
-    testImplementation 'org.springframework.kafka:spring-kafka-test'
-    testImplementation 'org.testcontainers:postgresql'
-    testImplementation 'org.testcontainers:kafka'
-    testImplementation 'org.testcontainers:redis'
-    
-    // Test MapStruct
-    testAnnotationProcessor libs.mapstruct.processor
+    // Testing - Integration tests only
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
 }
 
 // JPA Static Metamodel Generation

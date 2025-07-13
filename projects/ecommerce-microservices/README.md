@@ -1,4 +1,6 @@
-# 대규모 트래픽 처리를 위한 이커머스 시스템
+# 🏗️ 헥사고날 아키텍처 기반 이커머스 시스템
+
+> 대규모 트래픽 처리를 위한 Domain-Driven Design + Hexagonal Architecture
 
 ## 🎯 프로젝트 목표
 
@@ -8,9 +10,98 @@
 - **고가용성**: 일부 서비스 장애 시에도 전체 시스템은 동작 가능
 - **확장성**: 트래픽 증가에 따른 수평적 확장 가능
 
+### 아키텍처 목표
+- **테스트 용이성**: 비즈니스 로직과 기술적 구현의 완전한 분리
+- **기술 독립성**: 데이터베이스, 메시징, 웹 프레임워크 교체 가능
+- **유지보수성**: 명확한 책임 분리와 의존성 방향 제어
+
+## 🏛️ 헥사고날 아키텍처 개요
+
+```mermaid
+graph TB
+    subgraph "Primary Adapters (Driving)"
+        WEB[REST API<br/>Controller]
+        MSG[Message<br/>Consumer]
+        CLI[CLI Interface]
+    end
+    
+    subgraph "Application Core"
+        subgraph "Application Layer"
+            UC[Use Cases<br/>(Inbound Ports)]
+            CH[Command Handlers]
+            QH[Query Handlers]
+            EH[Event Handlers]
+        end
+        
+        subgraph "Domain Layer"
+            AGG[Aggregates]
+            VO[Value Objects]
+            DS[Domain Services]
+            DE[Domain Events]
+        end
+    end
+    
+    subgraph "Secondary Adapters (Driven)"
+        DB[(Database<br/>JPA)]
+        CACHE[(Redis<br/>Cache)]
+        MQ[Message Queue<br/>Kafka]
+        EXT[External APIs<br/>Payment]
+    end
+    
+    subgraph "Outbound Ports"
+        PERS[Persistence Port]
+        EVENT[Event Publishing Port]
+        LOCK[Distributed Lock Port]
+        VALID[Validation Port]
+    end
+    
+    WEB --> UC
+    MSG --> UC
+    CLI --> UC
+    
+    UC --> CH
+    UC --> QH
+    UC --> EH
+    
+    CH --> AGG
+    QH --> AGG
+    EH --> DE
+    
+    CH --> PERS
+    CH --> EVENT
+    CH --> LOCK
+    CH --> VALID
+    
+    PERS --> DB
+    EVENT --> MQ
+    LOCK --> CACHE
+    VALID --> EXT
+    
+    style AGG fill:#e1f5fe
+    style UC fill:#f3e5f5
+    style WEB fill:#fff3e0
+    style DB fill:#e8f5e8
+```
+
+### 핵심 설계 원칙
+
+#### 1. 의존성 규칙 (Dependency Rule)
+- **Domain Layer**: 외부 의존성 없음 (순수 비즈니스 로직)
+- **Application Layer**: Domain Layer만 의존
+- **Adapters**: Application Layer를 통해서만 Domain에 접근
+
+#### 2. 포트와 어댑터 패턴
+- **Inbound Ports (Use Cases)**: 애플리케이션이 외부에 제공하는 기능
+- **Outbound Ports**: 애플리케이션이 외부에 요구하는 기능
+- **Adapters**: 포트의 구체적인 구현체
+
+#### 3. 관심사의 분리
+- **Driving Adapters**: 애플리케이션을 사용하는 외부 시스템
+- **Driven Adapters**: 애플리케이션이 사용하는 외부 시스템
+
 ## 🏗️ 도메인 모델링 (DDD)
 
-### 왜 DDD를 선택했는가?
+### 왜 DDD + 헥사고날을 선택했는가?
 
 1. **복잡한 비즈니스 로직의 명확한 분리**
    - 주문과 재고는 서로 다른 비즈니스 컨텍스트를 가짐
@@ -467,47 +558,73 @@ sequenceDiagram
     I->>R: 락 해제
 ```
 
-## 📦 프로젝트 구조
+## 📦 헥사고날 아키텍처 기반 프로젝트 구조
 
 ```
 ecommerce-microservices/
-├── common/                      # 공통 모듈
-│   ├── domain-events/          # 도메인 이벤트 정의
-│   ├── exceptions/             # 공통 예외
-│   └── utils/                  # 유틸리티
-├── service-discovery/          # Eureka Server
-├── api-gateway/               # Spring Cloud Gateway
-├── order-service/             # 주문 도메인 서비스
-│   ├── domain/               
-│   │   ├── model/           # Order Aggregate
-│   │   ├── repository/      # Repository Interface
-│   │   └── service/         # Domain Service
-│   ├── application/          
-│   │   ├── command/         # Command Handlers
-│   │   ├── query/           # Query Handlers
-│   │   └── saga/            # Saga Orchestration
-│   ├── infrastructure/       
-│   │   ├── persistence/     # JPA Implementation
-│   │   ├── messaging/       # Kafka Implementation
-│   │   └── web/            # REST Controllers
-│   └── interfaces/           
-│       └── rest/            # API Endpoints
-├── inventory-service/         # 재고 도메인 서비스
-│   ├── domain/
-│   │   ├── model/           # Product Aggregate
-│   │   ├── repository/      
-│   │   └── service/         # Stock Management
-│   ├── application/
-│   │   ├── command/         
-│   │   ├── query/           
-│   │   └── lock/            # Distributed Lock
-│   ├── infrastructure/
-│   │   ├── persistence/     
-│   │   ├── messaging/       
-│   │   └── cache/           # Redis Implementation
-│   └── interfaces/
-└── docker-compose.yml        # 로컬 개발 환경
+├── common/                           # 공통 도메인 이벤트
+│   ├── domain-events/               # 도메인 이벤트 정의
+│   └── shared/                      # 공통 Value Objects
+├── service-discovery/               # Eureka Server
+├── api-gateway/                     # Spring Cloud Gateway
+├── order-service/                   # 주문 서비스 (헥사고날 구조)
+│   ├── domain/                      # 🔷 Domain Layer (순수 비즈니스 로직)
+│   │   ├── model/                   #   ├─ Aggregates (Order, OrderItem)
+│   │   ├── service/                 #   ├─ Domain Services
+│   │   ├── event/                   #   └─ Domain Events
+│   │   └── exception/               #     └─ Domain Exceptions
+│   ├── application/                 # 🔶 Application Layer (Use Cases)
+│   │   ├── port/                    #   ├─ Ports (인터페이스)
+│   │   │   ├── in/                  #   │   ├─ Inbound Ports (Use Cases)
+│   │   │   └── out/                 #   │   └─ Outbound Ports
+│   │   └── service/                 #   └─ Use Case 구현체
+│   ├── adapter/                     # 🔸 Adapters (외부 세계와의 인터페이스)
+│   │   ├── in/                      #   ├─ Inbound Adapters
+│   │   │   ├── web/                 #   │   ├─ REST Controllers
+│   │   │   └── messaging/           #   │   └─ Message Listeners
+│   │   └── out/                     #   └─ Outbound Adapters
+│   │       ├── persistence/         #       ├─ JPA Repositories
+│   │       ├── messaging/           #       ├─ Event Publishers
+│   │       └── external/            #       └─ External API Clients
+│   └── config/                      # Spring Configuration
+├── inventory-service/               # 재고 서비스 (동일한 헥사고날 구조)
+│   ├── domain/                      # 🔷 Domain Layer
+│   │   ├── model/                   #   ├─ Product, Stock Aggregates
+│   │   ├── service/                 #   ├─ Stock Domain Service
+│   │   └── event/                   #   └─ Stock Events
+│   ├── application/                 # 🔶 Application Layer
+│   │   ├── port/in/                 #   ├─ Stock Use Cases
+│   │   ├── port/out/                #   ├─ Persistence/Lock Ports
+│   │   └── service/                 #   └─ Stock Service Implementations
+│   ├── adapter/                     # 🔸 Adapters
+│   │   ├── in/web/                  #   ├─ Inventory Controllers
+│   │   ├── in/messaging/            #   ├─ Order Event Listeners
+│   │   ├── out/persistence/         #   ├─ Stock Repositories
+│   │   ├── out/messaging/           #   ├─ Stock Event Publishers
+│   │   └── out/lock/                #   └─ Distributed Lock (Redis)
+│   └── config/
+└── docker-compose.yml              # 로컬 개발 환경
 ```
+
+### 헥사고날 레이어별 책임
+
+#### 🔷 Domain Layer (도메인 계층)
+- **Aggregates**: 비즈니스 불변성을 보장하는 엔티티 집합
+- **Value Objects**: 불변 값 객체 (OrderId, Money, ProductId)
+- **Domain Services**: 복잡한 비즈니스 규칙 처리
+- **Domain Events**: 도메인에서 발생하는 중요한 사건
+- **의존성**: 없음 (완전히 독립적)
+
+#### 🔶 Application Layer (애플리케이션 계층)
+- **Inbound Ports**: 외부에서 애플리케이션을 사용하는 인터페이스
+- **Outbound Ports**: 애플리케이션이 외부를 사용하는 인터페이스
+- **Use Case 구현체**: 비즈니스 플로우 오케스트레이션
+- **의존성**: Domain Layer만 의존
+
+#### 🔸 Adapter Layer (어댑터 계층)
+- **Inbound Adapters**: 외부 요청을 받아 Use Case로 전달
+- **Outbound Adapters**: 외부 시스템과의 실제 통신 구현
+- **의존성**: Application Layer를 통해서만 Domain에 접근
 
 ## 🚀 실행 방법
 

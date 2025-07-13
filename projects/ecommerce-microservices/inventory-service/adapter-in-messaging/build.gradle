@@ -1,0 +1,39 @@
+plugins {
+    id 'java-library'
+}
+
+description = 'Inventory Service Messaging Adapter - Event Listeners'
+
+dependencies {
+    // Core layers
+    implementation project(':inventory-service:application')
+    implementation project(':inventory-service:domain')
+    implementation project(':common')
+    
+    // Spring Kafka
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation libs.spring.kafka
+    
+    // JSON Processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    
+    // Test dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.testcontainers:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+// Library module - disable bootJar
+jar {
+    enabled = true
+    archiveClassifier = ''
+}
+
+bootJar {
+    enabled = false
+}
