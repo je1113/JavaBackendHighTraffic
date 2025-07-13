@@ -6,34 +6,42 @@ services:
     image: postgres:15-alpine
     container_name: ecommerce-postgres
     environment:
+      POSTGRES_DB: postgres
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: ecommerce
+      POSTGRES_PASSWORD: postgres_admin123!
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - ecommerce-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   # Redis - 분산 락 및 캐싱
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
     container_name: ecommerce-redis
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass redis_password123!
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - ecommerce-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 3s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   # Kafka & Zookeeper - 이벤트 스트리밍
   zookeeper:
@@ -42,17 +50,30 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 10
+      ZOOKEEPER_SYNC_LIMIT: 5
+      ZOOKEEPER_MAX_CLIENT_CNXNS: 60
     ports:
       - "2181:2181"
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
       - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: ecommerce-kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
       - "9094:9094"
@@ -67,28 +88,51 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      # High-traffic optimizations
+      KAFKA_NUM_NETWORK_THREADS: 8
+      KAFKA_NUM_IO_THREADS: 8
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      KAFKA_NUM_PARTITIONS: 6
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      # JVM settings
+      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
     volumes:
       - kafka_data:/var/lib/kafka/data
+    networks:
+      - ecommerce-network
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 10s
       timeout: 10s
       retries: 5
+      start_period: 40s
+    restart: unless-stopped
 
   # Kafka UI - 개발 편의성
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: ecommerce-kafka-ui
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
       - "8090:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9094
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
 
-  # MongoDB - 이벤트 로그 저장 (선택적)
+  # MongoDB - 이벤트 로그 저장 (Event Sourcing)
   mongodb:
     image: mongo:6-jammy
     container_name: ecommerce-mongodb
@@ -96,15 +140,20 @@ services:
       - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_ROOT_PASSWORD: admin123!
       MONGO_INITDB_DATABASE: event_store
     volumes:
       - mongodb_data:/data/db
+      - ./docker/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
+    networks:
+      - ecommerce-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/event_store --quiet
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
   # Prometheus - 메트릭 수집
   prometheus:
@@ -113,15 +162,22 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
-    depends_on:
-      - api-gateway
-      - order-service
-      - inventory-service
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
   # Grafana - 메트릭 시각화
   grafana:
@@ -131,14 +187,25 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_PASSWORD=admin123!
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - ecommerce-network
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
   # Zipkin - 분산 추적
   zipkin:
@@ -149,11 +216,15 @@ services:
     environment:
       - STORAGE_TYPE=mem
       - JAVA_OPTS=-Xms512m -Xmx512m
+    networks:
+      - ecommerce-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9411/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
 volumes:
   postgres_data:
@@ -166,6 +237,5 @@ volumes:
   grafana_data:
 
 networks:
-  default:
-    name: ecommerce-network
+  ecommerce-network:
     driver: bridge
