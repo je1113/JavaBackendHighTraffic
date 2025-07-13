@@ -1,31 +1,48 @@
 plugins {
     id 'com.palantir.docker' version '0.35.0'
     id 'org.springframework.boot'
+    id 'java'
 }
 
-description = 'Order Service - Hexagonal Architecture Main Application'
+description = 'Order Service with DDD Architecture'
 
 dependencies {
-    // Hexagonal Architecture Modules
-    implementation project(':order-service:domain')
-    implementation project(':order-service:application')
-    implementation project(':order-service:adapter-in-web')
-    implementation project(':order-service:adapter-in-messaging')
-    implementation project(':order-service:adapter-out-persistence')
-    implementation project(':order-service:adapter-out-messaging')
+    // Project Dependencies
+    implementation project(':common')
     
-    // Service Discovery  
+    // Spring Boot Starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
+    // Spring Cloud
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     
-    // Monitoring
-    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+    // Database
+    implementation 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
+    
+    // Messaging
+    implementation 'org.springframework.kafka:spring-kafka'
+    
+    // Redis for Distributed Lock
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation "org.redisson:redisson-spring-boot-starter:${redissonVersion}"
+    
+    // MapStruct for Mapping
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
     
     // Configuration
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     
-    // Testing - Integration tests only
+    // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
     testImplementation 'org.testcontainers:junit-jupiter'
 }
 
