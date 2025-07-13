@@ -27,7 +27,7 @@ graph TB
     
     subgraph "Application Core"
         subgraph "Application Layer"
-            UC[Use Cases<br/>(Inbound Ports)]
+            UC[Use Cases Inbound Ports]
             CH[Command Handlers]
             QH[Query Handlers]
             EH[Event Handlers]
