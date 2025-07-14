@@ -2,6 +2,7 @@ package com.hightraffic.ecommerce.order.domain.repository;
 
 import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
+import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderStatus;
 
@@ -94,4 +95,49 @@ public interface OrderRepository {
      * 전체 주문 개수 조회
      */
     long count();
+    
+    /**
+     * 고객별 특정 시간 이후 생성된 주문 수 조회
+     */
+    int countByCustomerIdAndCreatedAtAfter(CustomerId customerId, LocalDateTime dateTime);
+    
+    /**
+     * 고객별 여러 상태의 주문 수 조회
+     */
+    int countByCustomerIdAndStatusIn(CustomerId customerId, List<OrderStatus> statuses);
+    
+    /**
+     * 고객별 특정 상태의 주문 조회
+     */
+    List<Order> findByCustomerIdAndStatus(CustomerId customerId, OrderStatus status);
+    
+    /**
+     * 고객별 특정 시간 이후 생성된 주문 조회
+     */
+    List<Order> findByCustomerIdAndCreatedAtAfter(CustomerId customerId, LocalDateTime dateTime);
+    
+    /**
+     * 고객별 특정 시간 이후 생성된 주문 조회 (생성일 역순 정렬)
+     */
+    List<Order> findByCustomerIdAndCreatedAtAfterOrderByCreatedAtDesc(CustomerId customerId, LocalDateTime dateTime);
+    
+    /**
+     * 고객별 미결제 주문 수 조회
+     */
+    long countUnpaidOrdersByCustomerId(CustomerId customerId);
+    
+    /**
+     * 고객별 특정 시간 이후 완료된 주문 수 조회
+     */
+    long countCompletedOrdersByCustomerIdAfter(CustomerId customerId, LocalDateTime dateTime);
+    
+    /**
+     * 고객별 완료된 주문 수 조회
+     */
+    long countCompletedOrdersByCustomerId(CustomerId customerId);
+    
+    /**
+     * 고객의 총 구매 금액 계산
+     */
+    Money calculateTotalPurchaseAmount(CustomerId customerId);
 }

@@ -1,0 +1,28 @@
+# Order Service 설정 (고객 친화적으로 단순화)
+ecommerce:
+  order:
+    # 가격 정책
+    pricing:
+      vip-discount-rate: 0.10
+      bulk-discount-threshold: 10
+      bulk-discount-rate: 0.05
+      loyalty-discount-rate: 0.03
+      loyalty-order-threshold: 3          # 완화: 3회로 변경
+      free-shipping-threshold: 30000
+      standard-shipping-fee: 3000
+      express-shipping-fee: 5000
+      weekend-surcharge-rate: 0.02
+      enable-weekend-surcharge: false     # 기본값 비활성화
+      vip-threshold: 300000               # 완화: 30만원으로 변경
+    
+    # 시간 정책 (24시간 주문 가능)
+    time:
+      duplicate-order-prevention-minutes: 5
+      order-cancellation-hours: 24
+
+# Spring Boot 기본 설정
+spring:
+  application:
+    name: order-service
+  profiles:
+    active: local

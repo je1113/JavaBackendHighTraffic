@@ -143,10 +143,10 @@ graph TB
   - 총액 계산 로직
 
 #### 2.2.3 Domain Services 구현 (2시간)
-- [ ] **2.2.3.1** OrderDomainService 구현 (1시간 30분)
+- [x] **2.2.3.1** OrderDomainService 구현 (1시간 30분)
   - 복잡한 비즈니스 규칙 처리
   - 여러 Aggregate 간 협력 로직
-- [ ] **2.2.3.2** Domain Repository Port 정의 (30분)
+- [x] **2.2.3.2** Domain Repository Port 정의 (30분)
   - OrderRepository 인터페이스
   - 저장/조회 메서드 정의
 

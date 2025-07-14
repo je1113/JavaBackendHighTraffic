@@ -265,14 +265,155 @@ void Money_덧셈_연산이_올바르게_동작한다() {
 
 ## 📚 구현 상태
 
+## 🏢 Domain Services 및 비즈니스 규칙
+
+### Order Domain Services
+
+#### OrderDomainService
+고객 친화적인 주문 관리 로직을 담당
+
+**구현된 주요 기능:**
+- 주문 병합 로직 (제한 없이 자유롭게)
+- 주문 우선순위 계산
+- 고객 주문 통계 계산
+- 고가 주문 식별 (VIP 서비스 제공용)
+
+#### OrderValidationService
+최소한의 필수 검증만 수행
+
+**구현된 주요 기능:**
+- 중복 주문 방지 (5분 내)
+- 주문 취소 가능 여부 확인 (24시간 내)
+- 기본적인 주문 항목 검증 (수량 > 0)
+
+#### OrderPricingService
+고객 혜택 중심의 가격 계산
+
+**구현된 주요 기능:**
+- 할인 정책 적용 (대량구매, VIP, 충성고객)
+- 배송비 계산 (무료배송 적극 적용)
+- 쿠폰/포인트 적용 (50%까지 사용 가능)
+- 주말 할증 제거 (기본값 비활성화)
+
+### 📋 고객 친화적 비즈니스 정책
+
+#### ✅ 유지되는 최소한의 규칙들
+| 규칙 | 현재 값 | 비즈니스 근거 |
+|------|---------|---------------|
+| 중복 주문 방지 시간 | 5분 | • 실수 주문 방지<br>• 고객 보호 |
+| 주문 취소 가능 시간 | 24시간 | • 법적 쿨링오프<br>• 고객 만족도 |
+| 기본 수량 검증 | 1개 이상 | • 논리적 최소값 |
+
+#### 🎁 고객 혜택 중심 가격 정책
+| 정책 | 설정값 | 고객 혜택 |
+|------|---------|-----------|
+| VIP 기준 | 30만원 (완화) | • 더 많은 고객이 VIP 혜택<br>• 10% 할인 제공 |
+| 충성고객 기준 | 3회 주문 (완화) | • 빠른 혜택 제공<br>• 3% 할인 제공 |
+| 대량구매 할인 | 10개 이상 5% | • B2B 고객 지원<br>• 대량 구매 장려 |
+| 무료배송 기준 | 3만원 | • 합리적인 기준<br>• 높은 접근성 |
+| 주말 할증 | 비활성화 | • 언제나 동일한 가격<br>• 고객 불편 제거 |
+| 포인트 사용 | 50%까지 | • 적극적인 포인트 활용<br>• 고객 만족도 증대 |
+
+### 🔧 설정 기반 관리 전략
+
+#### 단순화된 Configuration Properties
+```java
+@ConfigurationProperties("ecommerce.order")
+public class OrderBusinessRulesConfig {
+    
+    // 가격 정책 설정 (고객 혜택 중심)
+    private PricingPolicy pricing = new PricingPolicy();
+    
+    // 시간 정책 설정 (최소한의 제한)
+    private TimePolicy time = new TimePolicy();
+    
+    public static class PricingPolicy {
+        private BigDecimal vipDiscountRate = new BigDecimal("0.10");
+        private int bulkDiscountThreshold = 10;
+        private BigDecimal bulkDiscountRate = new BigDecimal("0.05");
+        private BigDecimal loyaltyDiscountRate = new BigDecimal("0.03");
+        private int loyaltyOrderThreshold = 3; // 완화
+        private BigDecimal freeShippingThreshold = new BigDecimal("30000");
+        private BigDecimal standardShippingFee = new BigDecimal("3000");
+        private BigDecimal expressShippingFee = new BigDecimal("5000");
+        private BigDecimal weekendSurchargeRate = new BigDecimal("0.02");
+        private boolean enableWeekendSurcharge = false; // 비활성화
+        private BigDecimal vipThreshold = new BigDecimal("300000"); // 완화
+    }
+    
+    public static class TimePolicy {
+        private int duplicateOrderPreventionMinutes = 5;
+        private int orderCancellationHours = 24;
+    }
+}
+```
+
+#### 환경별 설정 예시
+```yaml
+# application-prod.yml (운영환경 - 고객 친화적)
+ecommerce:
+  order:
+    pricing:
+      enable-weekend-surcharge: false      # 할증 없음
+      vip-discount-rate: 0.10
+      vip-threshold: 300000                # 접근하기 쉬운 VIP 기준
+    time:
+      duplicate-order-prevention-minutes: 5
+      order-cancellation-hours: 24
+
+# application-promotion.yml (프로모션 기간 - 더욱 혜택 강화)
+ecommerce:
+  order:
+    pricing:
+      vip-discount-rate: 0.15             # 할인율 증가
+      loyalty-order-threshold: 2          # 더 빠른 충성고객 혜택
+      free-shipping-threshold: 20000      # 무료배송 기준 완화
+      vip-threshold: 200000               # VIP 기준 완화
+    time:
+      duplicate-order-prevention-minutes: 1  # 빠른 재주문 허용
+      order-cancellation-hours: 48           # 취소 기간 연장
+
+# application-dev.yml (개발환경 - 제한 최소화)
+ecommerce:
+  order:
+    pricing:
+      enable-weekend-surcharge: false
+      vip-threshold: 10000                # 테스트 용이성
+    time:
+      duplicate-order-prevention-minutes: 0  # 중복 방지 해제
+      order-cancellation-hours: 168          # 7일까지 취소 가능
+```
+
+#### A/B 테스트 및 Feature Flag 지원
+```java
+@Component
+public class BusinessRuleFeatureFlags {
+    
+    @Value("${feature.dynamic-pricing:false}")
+    private boolean enableDynamicPricing;
+    
+    @Value("${feature.ai-fraud-detection:false}")
+    private boolean enableAiFraudDetection;
+    
+    @Value("${feature.real-time-inventory:true}")
+    private boolean enableRealTimeInventory;
+    
+    public boolean shouldApplyDynamicPricing(CustomerId customerId) {
+        return enableDynamicPricing && isInTestGroup(customerId);
+    }
+}
+```
+
 ### ✅ 완료된 구현
 - [x] Order Domain Events (OrderCreatedEvent, OrderConfirmedEvent, OrderCancelledEvent, OrderCompletedEvent)
 - [x] Order Value Objects (OrderId, CustomerId, OrderStatus, Money, ProductId)
 - [x] Order Aggregate (Order, OrderItem)
-- [x] Order Repository Interface
+- [x] Order Repository Interface (확장 완료)
 - [x] Order Domain Exceptions
+- [x] Order Domain Services (OrderDomainService, OrderValidationService, OrderPricingService)
 
 ### 🔄 진행 중인 구현
+- [ ] Configuration Properties 적용
 - [ ] Application Layer (Use Cases, Command/Query Handlers)
 - [ ] Infrastructure Layer (JPA Adapters, Kafka Adapters)
 
