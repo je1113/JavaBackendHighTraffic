@@ -94,52 +94,249 @@
 ### Inventory Domain Model
 
 #### 📋 속성 (Attributes)
-**Product Aggregate Root** (미구현)
+**Product Aggregate Root** ✅
 - `ProductId productId` - 상품 고유 식별자
 - `String productName` - 상품명
 - `Stock stock` - 재고 정보 (Entity)
-- `List<StockMovement> stockMovements` - 재고 변동 이력
+- `StockQuantity lowStockThreshold` - 낮은 재고 임계값
+- `boolean isActive` - 상품 활성화 상태
 - `LocalDateTime createdAt` - 상품 등록 시각
 - `LocalDateTime lastModifiedAt` - 최종 수정 시각
+- `Long version` - 동시성 제어를 위한 버전
+- `List<DomainEvent> domainEvents` - 도메인 이벤트 저장
 
-**Stock Entity** (미구현)
-- `Integer availableQuantity` - 구매 가능 수량
-- `Integer reservedQuantity` - 예약된 수량
-- `Integer totalQuantity` - 총 재고 수량
+**Stock Entity** ✅
+- `StockQuantity availableQuantity` - 구매 가능 수량
+- `StockQuantity reservedQuantity` - 예약된 수량
+- `StockQuantity totalQuantity` - 총 재고 수량
+- `Map<ReservationId, StockReservation> reservations` - 예약 정보 관리
 - `Long version` - 낙관적 락을 위한 버전
+- `LocalDateTime lastModifiedAt` - 최종 수정 시각
+
+**StockReservation Entity** ✅
+- `ReservationId reservationId` - 예약 고유 식별자
+- `StockQuantity quantity` - 예약 수량
+- `LocalDateTime reservedAt` - 예약 시각
+- `LocalDateTime expiresAt` - 예약 만료 시각
 
 #### ⚡ 행위 (Behaviors)
-**Product Aggregate 행위** (미구현)
+**Product Aggregate 행위** ✅
 ```java
 // 재고 관리
-+ reserveStock(Integer quantity, OrderId orderId): boolean
-+ releaseReservation(OrderId orderId): void
-+ deductStock(Integer quantity): void
-+ restoreStock(Integer quantity): void
-+ adjustStock(Integer newQuantity, String reason): void
++ reserveStock(StockQuantity quantity, String orderId): ReservationId
++ releaseReservation(ReservationId reservationId, String orderId): void
++ deductStock(ReservationId reservationId, String orderId): void
++ deductStockDirectly(StockQuantity quantity, String reason): void
++ addStock(StockQuantity quantity, String reason): void
++ adjustStock(StockQuantity newTotalQuantity, String reason): void
+
+// 예약 관리
++ cleanupExpiredReservations(): void
++ getReservation(ReservationId reservationId): StockReservation
+
+// 상태 관리
++ activate(): void
++ deactivate(): void
++ setLowStockThreshold(StockQuantity threshold): void
++ updateProductName(String newName): void
 
 // 조회 메서드
-+ isStockAvailable(Integer quantity): boolean
-+ getAvailableQuantity(): Integer
-+ getTotalQuantity(): Integer
-+ getReservationByOrderId(OrderId): Optional<StockReservation>
++ isStockAvailable(StockQuantity quantity): boolean
++ isOutOfStock(): boolean
++ isLowStock(): boolean
++ pullDomainEvents(): List<DomainEvent>
 ```
 
 #### 🔒 규칙 (Business Rules)
-**Inventory 불변성 규칙** (미구현)
+**Inventory 불변성 규칙** ✅
 1. **재고 음수 방지**: availableQuantity >= 0 항상 유지
 2. **예약 타임아웃**: 30분 후 자동 해제 (설정 가능)
-3. **동시성 제어**: 분산 락 + 낙관적 락 조합
+3. **동시성 제어**: 버전 필드를 통한 낙관적 락
 4. **재고 일관성**: availableQuantity + reservedQuantity = totalQuantity
-5. **감사 추적**: 모든 재고 변동 이력 보관
-6. **예약 중복 방지**: 동일한 OrderId로 중복 예약 불가
+5. **예약 중복 방지**: 동일한 ReservationId로 중복 예약 불가
+6. **비활성 상품 제약**: 비활성 상품은 재고 작업 불가
 
-**Domain Events** (미구현)
+**Domain Events** ✅
 - `StockReservedEvent`: 재고 예약 성공 → Order 확정 가능
-- `StockDeductedEvent`: 재고 차감 완료 → 배송 준비
-- `StockRestoredEvent`: 재고 복원 → 취소 처리 완료
-- `InsufficientStockEvent`: 재고 부족 → 주문 취소 필요
+- `StockReleasedEvent`: 재고 해제 완료 → 예약 취소 처리
+- `StockAdjustedEvent`: 재고 조정 완료 → 재고 변동 추적
 - `LowStockAlertEvent`: 재고 부족 임계값 도달 → 재입고 알림
+
+### 🎯 재고 예약 시스템 설계
+
+#### 📌 재고 예약 개념 (Stock Reservation)
+
+**재고 예약**은 전자상거래에서 **재고의 정확성과 일관성을 보장하기 위한 핵심 메커니즘**입니다.
+
+#### 🔄 2-Phase Commit 패턴
+
+```mermaid
+sequenceDiagram
+    participant C as Customer
+    participant O as Order Service
+    participant I as Inventory Service
+    participant P as Payment Service
+    
+    C->>O: 주문 요청
+    O->>I: 재고 예약 요청
+    I->>I: 재고 확인 & 예약
+    I-->>O: 예약 성공 (ReservationId)
+    O->>P: 결제 처리
+    
+    alt 결제 성공
+        P-->>O: 결제 완료
+        O->>I: 재고 차감 확정
+        I->>I: 예약 → 실제 차감
+        I-->>O: 차감 완료
+        O-->>C: 주문 완료
+    else 결제 실패
+        P-->>O: 결제 실패
+        O->>I: 예약 해제
+        I->>I: 예약 수량 복원
+        I-->>O: 복원 완료
+        O-->>C: 주문 실패
+    end
+```
+
+#### 💡 왜 재고 예약이 필요한가?
+
+##### 1. **동시성 문제 해결**
+```java
+// ❌ 예약 없이 직접 차감 시 문제
+// 재고 10개, 두 고객이 각각 8개 주문
+Customer A: 재고 확인(10개) → 결제 중...
+Customer B: 재고 확인(10개) → 결제 중...
+Customer A: 재고 차감(10-8=2) → 성공
+Customer B: 재고 차감(2-8=-6) → 음수 재고 발생!
+
+// ✅ 예약 시스템으로 해결
+Customer A: 재고 확인(10개) → 예약(8개) → available=2
+Customer B: 재고 확인(available=2) → 주문 불가
+```
+
+##### 2. **트랜잭션 보장**
+- 주문 → 결제 → 배송의 긴 프로세스 중 재고 확보
+- 결제 실패 시 자동으로 재고 복원
+- 분산 시스템에서 eventual consistency 달성
+
+##### 3. **사용자 경험 향상**
+- 장바구니에 담은 상품의 재고 보장
+- 결제 중 품절 상황 방지
+- 명확한 재고 상태 표시
+
+#### 🏗️ 재고 예약 구현 상세
+
+##### 예약 생성
+```java
+// Product.java:65-96
+public ReservationId reserveStock(StockQuantity quantity, String orderId) {
+    validateActiveProduct();  // 활성 상품만 예약 가능
+    
+    ReservationId reservationId = ReservationId.generate();
+    StockReservation reservation = stock.reserveStock(reservationId, quantity);
+    
+    // 재고 상태 변경
+    // totalQuantity = 100
+    // availableQuantity = 100 → 92 (8개 예약)
+    // reservedQuantity = 0 → 8
+    
+    addDomainEvent(new StockReservedEvent(...));
+    checkLowStockAlert();
+    
+    return reservationId;
+}
+```
+
+##### 예약 만료 처리
+```java
+// StockReservation.java:25
+private static final int DEFAULT_RESERVATION_MINUTES = 30;
+
+// Stock.java:234-247
+public void cleanupExpiredReservations() {
+    reservations.entrySet().removeIf(entry -> {
+        if (entry.getValue().isExpired()) {
+            // 만료된 예약 수량을 다시 사용 가능으로 변경
+            this.availableQuantity = availableQuantity.add(expiredQuantity);
+            this.reservedQuantity = reservedQuantity.subtract(expiredQuantity);
+            return true;
+        }
+        return false;
+    });
+}
+```
+
+##### 예약 확정 (실제 차감)
+```java
+// Product.java:135-150
+public void deductStock(ReservationId reservationId, String orderId) {
+    StockReservation reservation = stock.getReservation(reservationId);
+    
+    // 예약 수량을 실제로 차감
+    // totalQuantity = 100 → 92
+    // reservedQuantity = 8 → 0
+    // availableQuantity = 92 (변경 없음)
+    
+    stock.deductStock(reservationId);
+}
+```
+
+#### 📊 재고 상태 관리
+
+```java
+public class Stock {
+    // 재고 3요소
+    private StockQuantity availableQuantity;  // 구매 가능 수량
+    private StockQuantity reservedQuantity;   // 예약된 수량
+    private StockQuantity totalQuantity;      // 총 재고
+    
+    // 불변식: availableQuantity + reservedQuantity = totalQuantity
+    private void validateStockConsistency() {
+        StockQuantity calculated = availableQuantity.add(reservedQuantity);
+        if (!calculated.equals(totalQuantity)) {
+            throw new InvalidStockOperationException("Stock inconsistency");
+        }
+    }
+}
+```
+
+#### 🛡️ 예약 시스템의 장점
+
+1. **데이터 일관성**: 재고 음수 방지, 중복 판매 방지
+2. **확장성**: 분산 환경에서도 안전한 재고 관리
+3. **복원력**: 실패 시 자동 롤백 메커니즘
+4. **추적성**: 모든 예약에 고유 ID로 감사 추적
+5. **유연성**: 예약 시간, 정책 등 설정 가능
+
+#### 🎯 StockDomainService의 역할
+
+```java
+public class StockDomainService {
+    // 재고 부족 검증
+    public void validateStockAvailability(Product product, StockQuantity requested) {
+        if (!product.isStockAvailable(requested)) {
+            throw new InsufficientStockException(...);
+        }
+    }
+    
+    // 예약 만료 처리
+    public int processExpiredReservations(Product product) {
+        return product.cleanupExpiredReservations();
+    }
+    
+    // 재고 상태 분석
+    public StockStatusSummary generateStockStatusSummary(Product product) {
+        return new StockStatusSummary(
+            availableQuantity,
+            reservedQuantity,
+            totalQuantity,
+            reservationCount,
+            stockSeverity,     // 0: 충분, 1: 부족, 2: 매우부족, 3: 품절
+            reservationEfficiency
+        );
+    }
+}
+```
 
 ## 🔗 Bounded Context 분리 전략
 
