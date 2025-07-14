@@ -158,17 +158,17 @@ graph TB
 - [x] **2.3.1.3** ReservationId 클래스 구현 (30분)
 
 #### 2.3.2 Inventory Aggregate 구현 (3시간 30분)
-- [ ] **2.3.2.1** Stock Entity 구현 (1시간 30분)
+- [x] **2.3.2.1** Stock Entity 구현 (1시간 30분)
   - 사용 가능 수량 관리
   - 예약 수량 관리
   - 동시성 제어를 위한 버전 필드
-- [ ] **2.3.2.2** Product Aggregate Root 구현 (2시간)
+- [x] **2.3.2.2** Product Aggregate Root 구현 (2시간)
   - 재고 예약/차감/복원 메서드
   - 동시성 제어 로직
   - 도메인 이벤트 발행
 
 #### 2.3.3 Domain Services 구현 (1시간)
-- [ ] **2.3.3.1** StockDomainService 구현 (1시간)
+- [x] **2.3.3.1** StockDomainService 구현 (1시간)
   - 재고 부족 검증 로직
   - 예약 만료 처리
 
