@@ -316,6 +316,206 @@ void Money_덧셈_연산이_올바르게_동작한다() {
 
 ### 🔧 설정 기반 관리 전략
 
+#### 🎯 설계 결정: 왜 Configuration Properties를 선택했나?
+
+**문제 상황**
+- 비즈니스 규칙이 코드에 하드코딩되어 있어 변경 시마다 재배포 필요
+- 환경별(개발/스테이징/운영) 다른 정책 적용 어려움
+- 프로모션 기간 등 임시 정책 변경의 복잡성
+
+**고려한 대안들**
+
+| 방식 | 장점 | 단점 | 적합성 |
+|------|------|------|--------|
+| **하드코딩** | 단순함, 빠름 | 변경시 재배포, 환경별 설정 불가 | ❌ 부적합 |
+| **DB 설정 테이블** | 런타임 변경 가능 | DB 의존성, 복잡도 증가, 성능 저하 | ❌ 과도함 |
+| **외부 Config Server** | 중앙 관리, 런타임 변경 | 인프라 복잡도, 네트워크 의존성 | ❌ 과도함 |
+| **Configuration Properties** ✅ | 환경별 설정, 타입 안전성, 성능 최적 | 재시작 필요 | ✅ 최적 |
+
+**선택 이유: Configuration Properties + 시작시 캐시**
+
+#### 📊 성능 최적화 결정
+
+**캐시 vs 실시간 읽기 분석**
+
+```java
+// ❌ 실시간 파일 읽기 (매번 I/O 발생)
+public boolean isHighValueOrder(Order order) {
+    Properties props = loadFromFile("config.properties"); // 매번 디스크 I/O
+    BigDecimal threshold = new BigDecimal(props.getProperty("vip.threshold"));
+    return order.getTotalAmount().getAmount().compareTo(threshold) >= 0;
+}
+
+// ✅ 시작시 캐시 (메모리에서 바로 읽기)
+public boolean isHighValueOrder(Order order) {
+    return order.getTotalAmount().getAmount()
+        .compareTo(config.getPricing().getVipThreshold()) >= 0; // 메모리 액세스
+}
+```
+
+**성능 벤치마크 (가상 시나리오)**
+```
+실시간 파일 읽기: ~1-5ms (디스크 I/O)
+메모리 캐시 읽기: ~0.001ms (메모리 액세스)
+성능 향상: 1000-5000배
+```
+
+#### 🏗️ 아키텍처 일관성
+
+**Spring Boot 생태계와의 정합성**
+- Spring Boot의 표준 설정 방식 활용
+- `@ConfigurationProperties`로 타입 안전성 보장
+- IDE 자동완성 지원 (spring-boot-configuration-processor)
+- Validation 어노테이션 지원
+
+```java
+@ConfigurationProperties("ecommerce.order")
+@Validated
+public class OrderBusinessRulesConfig {
+    
+    @NotNull
+    @DecimalMin("0.0")
+    private BigDecimal vipDiscountRate = new BigDecimal("0.10");
+    
+    @Min(1)
+    private int loyaltyOrderThreshold = 3;
+}
+```
+
+#### 🎯 비즈니스 요구사항 분석
+
+**설정 변경 빈도 분석**
+- **VIP 기준 금액**: 분기별 1-2회 (마케팅 전략 변경)
+- **할인율**: 월 1-2회 (프로모션 계획)
+- **배송비 정책**: 년 1-2회 (물류비 변동)
+- **시간 제한**: 거의 변경 없음 (법적 요구사항)
+
+**결론**: 빈번하지 않은 변경 → 재시작 기반 설정이 적합
+
+#### 🛡️ 운영 안정성 고려사항
+
+**장애 시나리오 분석**
+
+1. **파일 시스템 장애**
+   ```
+   실시간 읽기: 매 요청마다 장애 발생 가능
+   캐시 방식: 시작 후에는 영향 없음 ✅
+   ```
+
+2. **설정 파일 손상**
+   ```
+   실시간 읽기: 런타임 에러, 서비스 중단
+   캐시 방식: 시작 시점에 검증, 안전한 실패 ✅
+   ```
+
+3. **동시성 이슈**
+   ```
+   실시간 읽기: 파일 락, 동시 접근 문제
+   캐시 방식: 불변 객체, 동시성 문제 없음 ✅
+   ```
+
+#### 🔄 배포 전략과의 호환성
+
+**무중단 배포 시나리오**
+```yaml
+# Blue-Green 배포
+# 1. Green 환경에 새 설정으로 시작
+# 2. 헬스체크 통과 확인
+# 3. 트래픽 전환
+# 4. Blue 환경 종료
+
+# 설정 검증
+ecommerce:
+  order:
+    pricing:
+      vip-threshold: 300000  # 새 정책
+    time:
+      duplicate-order-prevention-minutes: 3  # 완화된 정책
+```
+
+**롤백 전략**
+- 이전 버전 설정 파일로 즉시 롤백 가능
+- Git을 통한 설정 이력 관리
+- 환경별 설정 파일 분리로 실수 방지
+
+#### 🧪 테스트 용이성
+
+**단위 테스트**
+```java
+@Test
+void 설정값에_따른_VIP_판정_테스트() {
+    // Given
+    OrderBusinessRulesConfig config = new OrderBusinessRulesConfig();
+    config.getPricing().setVipThreshold(new BigDecimal("100000"));
+    
+    OrderDomainService service = new OrderDomainService(repository, config);
+    Order order = createOrderWithAmount(150000);
+    
+    // When & Then
+    assertThat(service.isHighValueOrder(order)).isTrue();
+}
+```
+
+**통합 테스트**
+```yaml
+# application-test.yml
+ecommerce:
+  order:
+    pricing:
+      vip-threshold: 10000  # 테스트용 낮은 임계값
+      enable-weekend-surcharge: false  # 테스트 안정성
+```
+
+#### 📈 모니터링 및 관찰 가능성
+
+**설정 값 추적**
+```java
+@EventListener(ApplicationReadyEvent.class)
+public void logConfigurationOnStartup() {
+    log.info("Order Configuration Loaded: VIP Threshold={}, Loyalty Threshold={}", 
+        config.getPricing().getVipThreshold(),
+        config.getPricing().getLoyaltyOrderThreshold());
+}
+```
+
+**운영 메트릭**
+- VIP 고객 전환율 모니터링
+- 할인 적용률 추적
+- 설정 변경 후 비즈니스 지표 변화 관찰
+
+#### 🔮 미래 확장성 고려
+
+**단계적 발전 경로**
+```
+1단계 (현재): Static Configuration Properties
+   ↓ (필요시)
+2단계: @RefreshScope + Spring Cloud Config
+   ↓ (필요시)  
+3단계: Database-driven Configuration
+   ↓ (필요시)
+4단계: AI-driven Dynamic Pricing
+```
+
+**확장 지점 준비**
+```java
+// 인터페이스로 추상화하여 미래 확장 준비
+public interface PricingPolicyProvider {
+    BigDecimal getVipThreshold();
+    BigDecimal getVipDiscountRate();
+}
+
+// 현재 구현
+@Component
+public class ConfigurationBasedPricingPolicy implements PricingPolicyProvider {
+    // Configuration Properties 기반
+}
+
+// 미래 구현 (필요시)
+public class DatabaseDrivenPricingPolicy implements PricingPolicyProvider {
+    // DB 기반 실시간 설정
+}
+```
+
 #### 단순화된 Configuration Properties
 ```java
 @ConfigurationProperties("ecommerce.order")
