@@ -17,12 +17,6 @@ public final class ProductId implements Serializable {
     
     private final String value;
     
-    /**
-     * 새로운 ProductId 생성
-     */
-    public static ProductId generate() {
-        return new ProductId(UUID.randomUUID().toString());
-    }
     
     /**
      * 기존 ID 값으로 ProductId 생성

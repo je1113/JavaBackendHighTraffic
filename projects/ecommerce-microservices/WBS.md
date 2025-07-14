@@ -153,9 +153,9 @@ graph TB
 ### 🏗️ 2.3 Inventory Service - Domain Layer (6시간)
 
 #### 2.3.1 Value Objects 구현 (1시간 30분)
-- [ ] **2.3.1.1** ProductId 클래스 구현 (30분)
-- [ ] **2.3.1.2** StockQuantity 클래스 구현 (30분)
-- [ ] **2.3.1.3** ReservationId 클래스 구현 (30분)
+- [x] **2.3.1.1** ProductId 클래스 구현 (30분)
+- [x] **2.3.1.2** StockQuantity 클래스 구현 (30분)
+- [x] **2.3.1.3** ReservationId 클래스 구현 (30분)
 
 #### 2.3.2 Inventory Aggregate 구현 (3시간 30분)
 - [ ] **2.3.2.1** Stock Entity 구현 (1시간 30분)

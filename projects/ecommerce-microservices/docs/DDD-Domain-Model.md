@@ -604,6 +604,123 @@ public class BusinessRuleFeatureFlags {
 }
 ```
 
+## 🔧 Value Object ID 생성 패턴 설계 원칙
+
+### 🎯 문제 인식
+초기 구현에서 모든 ID Value Object에 `generate()` 메서드를 추가했으나, DDD 관점에서 도메인 책임 경계를 위반하는 문제가 발견됨.
+
+### 📋 도메인별 ID 생성 책임 분석
+
+#### ✅ ID 생성이 적절한 경우
+| Value Object | 도메인 | 이유 |
+|--------------|-------|------|
+| **OrderId** | Order | 주문 생성은 Order 도메인의 핵심 책임 |
+| **ReservationId** | Inventory | 재고 예약 생성은 Inventory 도메인의 핵심 책임 |
+
+```java
+// ✅ 적절한 사용 예시
+public class Order {
+    public static Order create(CustomerId customerId) {
+        OrderId orderId = OrderId.generate();  // 새로운 주문 생성
+        return new Order(orderId, customerId);
+    }
+}
+
+public class StockReservation {
+    public static StockReservation create(ProductId productId, StockQuantity quantity) {
+        ReservationId reservationId = ReservationId.generate();  // 새로운 예약 생성
+        return new StockReservation(reservationId, productId, quantity);
+    }
+}
+```
+
+#### ❌ ID 생성이 부적절한 경우
+| Value Object | 도메인 | 문제점 |
+|--------------|-------|--------|
+| **CustomerId** | Order | 고객 등록은 User/Customer 도메인의 책임 |
+| **ProductId** | Inventory | 상품 생성은 Product 도메인의 책임 |
+
+```java
+// ❌ 부적절한 사용 (수정 전)
+CustomerId.generate();  // Order 도메인에서 고객 생성?
+ProductId.generate();   // Inventory 도메인에서 상품 생성?
+
+// ✅ 올바른 사용 (수정 후)
+CustomerId.of(existingCustomerId);  // 기존 고객 ID 참조
+ProductId.of(existingProductId);    // 기존 상품 ID 참조
+```
+
+### 🎯 설계 결정 원칙
+
+#### 1. 도메인 책임 경계 준수
+- **ID 생성 = 새로운 엔티티 생성의 시작점**
+- 해당 도메인에서 새로운 개념을 생성할 때만 `generate()` 메서드 제공
+- 다른 도메인의 엔티티 참조 시에는 `of()` 메서드만 제공
+
+#### 2. 컨텍스트 매핑 고려
+```mermaid
+graph TB
+    subgraph "Order Context"
+        O[Order] --> CI[CustomerId.of()]
+        O --> PI[ProductId.of()]
+        O --> OI[OrderId.generate()]
+    end
+    
+    subgraph "Inventory Context"
+        INV[Inventory] --> PI2[ProductId.of()]
+        INV --> RI[ReservationId.generate()]
+    end
+    
+    subgraph "Customer Context"
+        C[Customer] --> CI2[CustomerId.generate()]
+    end
+    
+    subgraph "Product Context"
+        P[Product] --> PI3[ProductId.generate()]
+    end
+```
+
+#### 3. 책임 이전 방법
+```java
+// 잘못된 방법: Value Object가 직접 생성
+ProductId newProductId = ProductId.generate();
+
+// 올바른 방법: 해당 도메인의 Factory나 Service에서 생성
+public class ProductFactory {
+    public Product createProduct(String name) {
+        ProductId productId = ProductId.of(UUID.randomUUID());
+        return new Product(productId, name);
+    }
+}
+```
+
+### 🔧 수정 내역
+
+#### Before (문제가 있던 코드)
+```java
+// 모든 ID Value Object에 generate() 메서드 존재
+OrderId.generate()      // ✅ 적절
+CustomerId.generate()   // ❌ 부적절
+ProductId.generate()    // ❌ 부적절
+ReservationId.generate() // ✅ 적절
+```
+
+#### After (수정된 코드)
+```java
+// 도메인 책임에 따라 선택적으로 generate() 메서드 제공
+OrderId.generate()      // ✅ 유지 (Order 도메인의 책임)
+CustomerId.of()         // ✅ 수정 (Customer 도메인에서 관리)
+ProductId.of()          // ✅ 수정 (Product 도메인에서 관리)
+ReservationId.generate() // ✅ 유지 (Inventory 도메인의 책임)
+```
+
+### 📚 학습 포인트
+
+1. **Value Object의 주목적은 값 표현이지 생성이 아님**
+2. **ID 생성 권한 = 해당 엔티티의 생성 권한**
+3. **Bounded Context 경계를 명확히 하여 책임 분리**
+4. **코드 편의성보다 도메인 무결성 우선**
+
 ### ✅ 완료된 구현
 - [x] Order Domain Events (OrderCreatedEvent, OrderConfirmedEvent, OrderCancelledEvent, OrderCompletedEvent)
 - [x] Order Value Objects (OrderId, CustomerId, OrderStatus, Money, ProductId)

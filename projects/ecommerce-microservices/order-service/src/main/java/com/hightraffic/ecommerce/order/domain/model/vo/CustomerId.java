@@ -17,12 +17,6 @@ public final class CustomerId implements Serializable {
     
     private final String value;
     
-    /**
-     * 새로운 CustomerId 생성
-     */
-    public static CustomerId generate() {
-        return new CustomerId(UUID.randomUUID().toString());
-    }
     
     /**
      * 기존 ID 값으로 CustomerId 생성
