@@ -218,12 +218,12 @@ graph TB
 - [x] **3.2.1.4** GetStockUseCase 인터페이스 (30분)
 
 #### 3.2.2 Command Handlers 구현 (4시간)
-- [ ] **3.2.2.1** ReserveStockService 구현 (1시간 30분)
+- [x] **3.2.2.1** ReserveStockService 구현 (1시간 30분)
   - 분산 락 적용
   - 재고 예약 로직
-- [ ] **3.2.2.2** DeductStockService 구현 (1시간)
-- [ ] **3.2.2.3** RestoreStockService 구현 (1시간)
-- [ ] **3.2.2.4** GetStockService 구현 (30분)
+- [x] **3.2.2.2** DeductStockService 구현 (1시간)
+- [x] **3.2.2.3** RestoreStockService 구현 (1시간)
+- [x] **3.2.2.4** GetStockService 구현 (30분)
 
 #### 3.2.3 Outbound Ports 정의 (2시간)
 - [ ] **3.2.3.1** InventoryPersistencePort 인터페이스 (30분)
