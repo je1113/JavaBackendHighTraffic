@@ -212,10 +212,10 @@ graph TB
 ### 📋 3.2 Inventory Service - Application Layer (10시간)
 
 #### 3.2.1 Inbound Ports 정의 (2시간)
-- [ ] **3.2.1.1** ReserveStockUseCase 인터페이스 (30분)
-- [ ] **3.2.1.2** DeductStockUseCase 인터페이스 (30분)
-- [ ] **3.2.1.3** RestoreStockUseCase 인터페이스 (30분)
-- [ ] **3.2.1.4** GetStockUseCase 인터페이스 (30분)
+- [x] **3.2.1.1** ReserveStockUseCase 인터페이스 (30분)
+- [x] **3.2.1.2** DeductStockUseCase 인터페이스 (30분)
+- [x] **3.2.1.3** RestoreStockUseCase 인터페이스 (30분)
+- [x] **3.2.1.4** GetStockUseCase 인터페이스 (30분)
 
 #### 3.2.2 Command Handlers 구현 (4시간)
 - [ ] **3.2.2.1** ReserveStockService 구현 (1시간 30분)
