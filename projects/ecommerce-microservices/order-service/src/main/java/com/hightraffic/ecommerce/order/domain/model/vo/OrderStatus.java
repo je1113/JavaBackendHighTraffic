@@ -25,54 +25,59 @@ public enum OrderStatus {
     CONFIRMED("CONFIRMED", "주문 확정", 2),
     
     /**
+     * 결제 대기중
+     */
+    PAYMENT_PENDING("PAYMENT_PENDING", "결제 대기중", 3),
+    
+    /**
      * 결제 처리중
      */
-    PAYMENT_PROCESSING("PAYMENT_PROCESSING", "결제 처리중", 3),
+    PAYMENT_PROCESSING("PAYMENT_PROCESSING", "결제 처리중", 4),
     
     /**
      * 결제 완료
      */
-    PAID("PAID", "결제 완료", 4),
+    PAID("PAID", "결제 완료", 5),
     
     /**
      * 배송 준비중
      */
-    PREPARING("PREPARING", "배송 준비중", 5),
+    PREPARING("PREPARING", "배송 준비중", 6),
     
     /**
      * 배송중
      */
-    SHIPPED("SHIPPED", "배송중", 6),
+    SHIPPED("SHIPPED", "배송중", 7),
     
     /**
      * 배송 완료
      */
-    DELIVERED("DELIVERED", "배송 완료", 7),
+    DELIVERED("DELIVERED", "배송 완료", 8),
     
     /**
      * 주문 완료
      */
-    COMPLETED("COMPLETED", "주문 완료", 8),
+    COMPLETED("COMPLETED", "주문 완료", 9),
     
     /**
      * 주문 취소됨
      */
-    CANCELLED("CANCELLED", "주문 취소", 9),
+    CANCELLED("CANCELLED", "주문 취소", 10),
     
     /**
      * 환불 처리중
      */
-    REFUNDING("REFUNDING", "환불 처리중", 10),
+    REFUNDING("REFUNDING", "환불 처리중", 11),
     
     /**
      * 환불 완료
      */
-    REFUNDED("REFUNDED", "환불 완료", 11),
+    REFUNDED("REFUNDED", "환불 완료", 12),
     
     /**
      * 주문 실패
      */
-    FAILED("FAILED", "주문 실패", 12);
+    FAILED("FAILED", "주문 실패", 13);
     
     private final String code;
     private final String description;
@@ -137,7 +142,9 @@ public enum OrderStatus {
             case PENDING:
                 return targetStatus == CONFIRMED || targetStatus == CANCELLED || targetStatus == FAILED;
             case CONFIRMED:
-                return targetStatus == PAYMENT_PROCESSING || targetStatus == CANCELLED;
+                return targetStatus == PAYMENT_PENDING || targetStatus == CANCELLED;
+            case PAYMENT_PENDING:
+                return targetStatus == PAYMENT_PROCESSING || targetStatus == CANCELLED || targetStatus == FAILED;
             case PAYMENT_PROCESSING:
                 return targetStatus == PAID || targetStatus == FAILED || targetStatus == CANCELLED;
             case PAID:

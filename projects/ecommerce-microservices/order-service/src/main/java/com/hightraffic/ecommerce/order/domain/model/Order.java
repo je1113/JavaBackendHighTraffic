@@ -14,7 +14,9 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -66,6 +68,13 @@ public class Order implements Serializable {
     
     @Version
     private Long version;
+    
+    // 재고 예약 정보 (productId -> reservationId)
+    @ElementCollection
+    @CollectionTable(name = "order_stock_reservations", joinColumns = @JoinColumn(name = "order_id"))
+    @MapKeyColumn(name = "product_id")
+    @Column(name = "reservation_id")
+    private Map<String, String> stockReservations = new HashMap<>();
     
     // JPA용 기본 생성자
     protected Order() {}
@@ -190,6 +199,33 @@ public class Order implements Serializable {
         if (additionalNotes != null && !additionalNotes.trim().isEmpty()) {
             this.notes = (notes != null ? notes + "\n" : "") + additionalNotes.trim();
         }
+    }
+    
+    /**
+     * 재고 예약 정보 추가
+     */
+    public void addReservationInfo(String reservationId, String productId) {
+        if (reservationId != null && productId != null) {
+            this.stockReservations.put(productId, reservationId);
+        }
+    }
+    
+    /**
+     * 결제 대기 상태로 변경
+     */
+    public void markAsPaymentPending() {
+        if (status != OrderStatus.CONFIRMED) {
+            throw new IllegalStateException("Only confirmed orders can be marked as payment pending");
+        }
+        this.status = OrderStatus.PAYMENT_PENDING;
+    }
+    
+    /**
+     * 주문 실패 처리
+     */
+    public void markAsFailed(String reason) {
+        this.status = OrderStatus.FAILED;
+        addNotes("Order failed: " + reason);
     }
     
     /**

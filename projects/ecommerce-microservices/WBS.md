@@ -194,19 +194,19 @@ graph TB
 - [x] **3.1.2.4** GetOrderService 구현 (30분)
 
 #### 3.1.3 Outbound Ports 정의 (2시간)
-- [ ] **3.1.3.1** OrderPersistencePort 인터페이스 (30분)
+- [x] **3.1.3.1** OrderPersistencePort 인터페이스 (30분)
   - 저장/조회 메서드
-- [ ] **3.1.3.2** EventPublishingPort 인터페이스 (30분)
+- [x] **3.1.3.2** EventPublishingPort 인터페이스 (30분)
   - 이벤트 발행 메서드
-- [ ] **3.1.3.3** StockValidationPort 인터페이스 (30분)
+- [x] **3.1.3.3** StockValidationPort 인터페이스 (30분)
   - 재고 확인 메서드
-- [ ] **3.1.3.4** PaymentProcessingPort 인터페이스 (30분)
+- [x] **3.1.3.4** PaymentProcessingPort 인터페이스 (30분)
   - 결제 처리 메서드
 
 #### 3.1.4 Event Handlers 구현 (2시간)
-- [ ] **3.1.4.1** StockReservedEventHandler (1시간)
+- [x] **3.1.4.1** StockReservedEventHandler (1시간)
   - 재고 예약 완료 처리
-- [ ] **3.1.4.2** PaymentCompletedEventHandler (1시간)
+- [x] **3.1.4.2** PaymentCompletedEventHandler (1시간)
   - 결제 완료 처리
 
 ### 📋 3.2 Inventory Service - Application Layer (10시간)
