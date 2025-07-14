@@ -179,19 +179,19 @@ graph TB
 ### 📋 3.1 Order Service - Application Layer (10시간)
 
 #### 3.1.1 Inbound Ports (Use Cases) 정의 (2시간)
-- [ ] **3.1.1.1** CreateOrderUseCase 인터페이스 (30분)
-- [ ] **3.1.1.2** ConfirmOrderUseCase 인터페이스 (30분)
-- [ ] **3.1.1.3** CancelOrderUseCase 인터페이스 (30분)
-- [ ] **3.1.1.4** GetOrderUseCase 인터페이스 (30분)
+- [x] **3.1.1.1** CreateOrderUseCase 인터페이스 (30분)
+- [x] **3.1.1.2** ConfirmOrderUseCase 인터페이스 (30분)
+- [x] **3.1.1.3** CancelOrderUseCase 인터페이스 (30분)
+- [x] **3.1.1.4** GetOrderUseCase 인터페이스 (30분)
 
 #### 3.1.2 Command Handlers (Use Case 구현) (4시간)
-- [ ] **3.1.2.1** CreateOrderService 구현 (1시간 30분)
+- [x] **3.1.2.1** CreateOrderService 구현 (1시간 30분)
   - CreateOrderCommand 정의
   - 주문 생성 로직
   - 도메인 이벤트 발행
-- [ ] **3.1.2.2** ConfirmOrderService 구현 (1시간)
-- [ ] **3.1.2.3** CancelOrderService 구현 (1시간)
-- [ ] **3.1.2.4** GetOrderService 구현 (30분)
+- [x] **3.1.2.2** ConfirmOrderService 구현 (1시간)
+- [x] **3.1.2.3** CancelOrderService 구현 (1시간)
+- [x] **3.1.2.4** GetOrderService 구현 (30분)
 
 #### 3.1.3 Outbound Ports 정의 (2시간)
 - [ ] **3.1.3.1** OrderPersistencePort 인터페이스 (30분)
