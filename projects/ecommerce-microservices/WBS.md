@@ -244,20 +244,20 @@ graph TB
 ### 🌐 4.1 Web Adapters 구현 (8시간)
 
 #### 4.1.1 Order Service Web Adapter (4시간)
-- [ ] **4.1.1.1** OrderController 구현 (2시간)
+- [x] **4.1.1.1** OrderController 구현 (2시간)
   - REST API 엔드포인트
   - DTO 변환 로직
   - 입력값 검증
-- [ ] **4.1.1.2** Web Request/Response DTOs (1시간)
+- [x] **4.1.1.2** Web Request/Response DTOs (1시간)
   - CreateOrderRequest/Response
   - GetOrderResponse
-- [ ] **4.1.1.3** Global Exception Handler (1시간)
+- [x] **4.1.1.3** Global Exception Handler (1시간)
   - 도메인 예외 → HTTP 응답 변환
 
 #### 4.1.2 Inventory Service Web Adapter (4시간)
-- [ ] **4.1.2.1** InventoryController 구현 (2시간)
-- [ ] **4.1.2.2** Web DTOs 구현 (1시간)
-- [ ] **4.1.2.3** Exception Handling (1시간)
+- [x] **4.1.2.1** InventoryController 구현 (2시간)
+- [x] **4.1.2.2** Web DTOs 구현 (1시간)
+- [x] **4.1.2.3** Exception Handling (1시간)
 
 ### 📨 4.2 Messaging Adapters 구현 (8시간)
 
