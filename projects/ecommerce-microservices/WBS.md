@@ -262,11 +262,11 @@ graph TB
 ### 📨 4.2 Messaging Adapters 구현 (8시간)
 
 #### 4.2.1 Order Service Messaging Adapter (4시간)
-- [ ] **4.2.1.1** OrderEventListener 구현 (2시간)
+- [x] **4.2.1.1** OrderEventListener 구현 (2시간)
   - Kafka Consumer 설정
   - 이벤트 역직렬화
-- [ ] **4.2.1.2** Message DTOs 구현 (1시간)
-- [ ] **4.2.1.3** Error Handling & DLQ (1시간)
+- [x] **4.2.1.2** Message DTOs 구현 (1시간)
+- [x] **4.2.1.3** Error Handling & DLQ (1시간)
 
 #### 4.2.2 Inventory Service Messaging Adapter (4시간)
 - [ ] **4.2.2.1** InventoryEventListener 구현 (2시간)
