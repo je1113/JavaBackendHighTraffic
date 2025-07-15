@@ -291,9 +291,9 @@ graph TB
   - Port 인터페이스 구현
 
 #### 5.1.2 Inventory Service Persistence Adapter (5시간)
-- [ ] **5.1.2.1** ProductJpaEntity 매핑 (1시간 30분)
-- [ ] **5.1.2.2** ProductRepository 구현 (2시간)
-- [ ] **5.1.2.3** InventoryPersistenceAdapter 구현 (1시간 30분)
+- [x] **5.1.2.1** ProductJpaEntity 매핑 (1시간 30분)
+- [x] **5.1.2.2** ProductRepository 구현 (2시간)
+- [x] **5.1.2.3** InventoryPersistenceAdapter 구현 (1시간 30분)
 
 ### 📨 5.2 Messaging Adapters 구현 (6시간)
 
