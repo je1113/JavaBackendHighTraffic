@@ -298,10 +298,10 @@ graph TB
 ### 📨 5.2 Messaging Adapters 구현 (6시간)
 
 #### 5.2.1 Event Publishing Adapters (3시간)
-- [ ] **5.2.1.1** KafkaEventPublisher 구현 (2시간)
+- [x] **5.2.1.1** KafkaEventPublisher 구현 (2시간)
   - Kafka Producer 설정
   - 이벤트 직렬화
-- [ ] **5.2.1.2** EventPublishingAdapter 구현 (1시간)
+- [x] **5.2.1.2** EventPublishingAdapter 구현 (1시간)
   - Port 인터페이스 구현
 
 #### 5.2.2 External API Adapters (3시간)
