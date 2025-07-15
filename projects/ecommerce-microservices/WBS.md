@@ -305,9 +305,9 @@ graph TB
   - Port 인터페이스 구현
 
 #### 5.2.2 External API Adapters (3시간)
-- [ ] **5.2.2.1** PaymentAdapter 구현 (1시간 30분)
+- [x] **5.2.2.1** PaymentAdapter 구현 (1시간 30분)
   - 외부 결제 API 연동
-- [ ] **5.2.2.2** StockValidationAdapter 구현 (1시간 30분)
+- [x] **5.2.2.2** StockValidationAdapter 구현 (1시간 30분)
   - 재고 서비스 호출
 
 ### 🔧 5.3 Technical Adapters 구현 (4시간)
