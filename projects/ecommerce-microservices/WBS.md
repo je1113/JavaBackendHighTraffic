@@ -226,15 +226,15 @@ graph TB
 - [x] **3.2.2.4** GetStockService 구현 (30분)
 
 #### 3.2.3 Outbound Ports 정의 (2시간)
-- [ ] **3.2.3.1** InventoryPersistencePort 인터페이스 (30분)
-- [ ] **3.2.3.2** DistributedLockPort 인터페이스 (30분)
-- [ ] **3.2.3.3** EventPublishingPort 인터페이스 (30분)
-- [ ] **3.2.3.4** CachePort 인터페이스 (30분)
+- [x] **3.2.3.1** InventoryPersistencePort 인터페이스 (30분)
+- [x] **3.2.3.2** DistributedLockPort 인터페이스 (30분)
+- [x] **3.2.3.3** EventPublishingPort 인터페이스 (30분)
+- [x] **3.2.3.4** CachePort 인터페이스 (30분)
 
 #### 3.2.4 Event Handlers 구현 (2시간)
-- [ ] **3.2.4.1** OrderCreatedEventHandler (1시간)
+- [x] **3.2.4.1** OrderCreatedEventHandler (1시간)
   - 주문 생성시 재고 예약
-- [ ] **3.2.4.2** OrderCancelledEventHandler (1시간)
+- [x] **3.2.4.2** OrderCancelledEventHandler (1시간)
   - 주문 취소시 재고 복원
 
 ---
