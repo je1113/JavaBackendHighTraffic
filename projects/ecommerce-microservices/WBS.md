@@ -269,9 +269,9 @@ graph TB
 - [x] **4.2.1.3** Error Handling & DLQ (1시간)
 
 #### 4.2.2 Inventory Service Messaging Adapter (4시간)
-- [ ] **4.2.2.1** InventoryEventListener 구현 (2시간)
-- [ ] **4.2.2.2** Message DTOs 구현 (1시간)
-- [ ] **4.2.2.3** Error Handling (1시간)
+- [x] **4.2.2.1** InventoryEventListener 구현 (2시간)
+- [x] **4.2.2.2** Message DTOs 구현 (1시간)
+- [x] **4.2.2.3** Error Handling (1시간)
 
 ---
 
@@ -280,13 +280,13 @@ graph TB
 ### 💾 5.1 Persistence Adapters 구현 (10시간)
 
 #### 5.1.1 Order Service Persistence Adapter (5시간)
-- [ ] **5.1.1.1** OrderJpaEntity 매핑 (1시간 30분)
+- [x] **5.1.1.1** OrderJpaEntity 매핑 (1시간 30분)
   - JPA 어노테이션 설정
   - 테이블 매핑
-- [ ] **5.1.1.2** OrderRepository 구현 (2시간)
+- [x] **5.1.1.2** OrderRepository 구현 (2시간)
   - Spring Data JPA 인터페이스
   - 커스텀 쿼리 메서드
-- [ ] **5.1.1.3** OrderPersistenceAdapter 구현 (1시간 30분)
+- [x] **5.1.1.3** OrderPersistenceAdapter 구현 (1시간 30분)
   - Domain ↔ JPA Entity 변환
   - Port 인터페이스 구현
 
