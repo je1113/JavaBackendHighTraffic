@@ -313,12 +313,12 @@ graph TB
 ### 🔧 5.3 Technical Adapters 구현 (4시간)
 
 #### 5.3.1 Cache Adapter (2시간)
-- [ ] **5.3.1.1** RedisAdapter 구현 (2시간)
+- [x] **5.3.1.1** RedisAdapter 구현 (2시간)
   - Redis 연결 설정
   - CachePort 구현
 
 #### 5.3.2 Distributed Lock Adapter (2시간)
-- [ ] **5.3.2.1** RedisDistributedLockAdapter (2시간)
+- [x] **5.3.2.1** RedisDistributedLockAdapter (2시간)
   - Redisson 기반 구현
   - DistributedLockPort 구현
 

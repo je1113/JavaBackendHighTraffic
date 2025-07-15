@@ -67,11 +67,24 @@ eureka:
 
 redisson:
   address: redis://localhost:6379
+  password: 
   connection-pool-size: 10
   connection-minimum-idle-size: 5
   timeout: 3000
   retry-attempts: 3
   retry-interval: 1500
+  database: 0
+  threads: 16
+  netty-threads: 32
+  lock-watchdog-timeout: PT30S
+
+distributed:
+  lock:
+    key-prefix: "lock:inventory:"
+    default-wait-time: PT3S
+    default-lease-time: PT10S
+    enable-metrics: true
+    metrics-report-interval: PT1M
 
 cache:
   redis:
