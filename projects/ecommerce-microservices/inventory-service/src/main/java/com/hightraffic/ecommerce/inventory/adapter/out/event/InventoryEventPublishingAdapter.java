@@ -26,6 +26,7 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
     private static final Logger log = LoggerFactory.getLogger(InventoryEventPublishingAdapter.class);
     
     private final KafkaEventPublisher eventPublisher;
+    private final DeadLetterQueueHandler dlqHandler;
     
     // 토픽 설정
     @Value("${app.kafka.topics.stock-reserved}")
@@ -46,6 +47,9 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
     @Value("${app.kafka.topics.insufficient-stock}")
     private String insufficientStockTopic;
     
+    @Value("${app.kafka.topics.stock-added}")
+    private String stockAddedTopic;
+    
     @Value("${spring.application.name:inventory-service}")
     private String serviceName;
     
@@ -56,8 +60,10 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
     @Value("${app.kafka.publish.retry.delay-ms:1000}")
     private long retryDelayMs;
     
-    public InventoryEventPublishingAdapter(KafkaEventPublisher eventPublisher) {
+    public InventoryEventPublishingAdapter(KafkaEventPublisher eventPublisher, 
+                                           DeadLetterQueueHandler dlqHandler) {
         this.eventPublisher = eventPublisher;
+        this.dlqHandler = dlqHandler;
     }
     
     @Override
@@ -164,9 +170,31 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
             }
         }
         
-        // 모든 재시도 실패
+        // 모든 재시도 실패 - DLQ로 전송
         log.error("재고 이벤트 발행 최종 실패: eventType={}, eventId={}, productId={}", 
             event.getEventType(), event.getEventId(), event.getAggregateId(), lastException);
+        
+        // DLQ로 전송 시도
+        try {
+            dlqHandler.sendToDeadLetterQueue(event, topic, lastException, maxRetryAttempts)
+                .thenAccept(dlqSuccess -> {
+                    if (dlqSuccess) {
+                        log.info("실패한 이벤트를 DLQ로 전송 완료: eventId={}, topic={}", 
+                            event.getEventId(), topic);
+                    } else {
+                        log.error("실패한 이벤트의 DLQ 전송도 실패: eventId={}, topic={}", 
+                            event.getEventId(), topic);
+                    }
+                })
+                .exceptionally(dlqError -> {
+                    log.error("DLQ 전송 중 예외 발생: eventId={}, topic={}, error={}", 
+                        event.getEventId(), topic, dlqError.getMessage(), dlqError);
+                    return null;
+                });
+        } catch (Exception dlqException) {
+            log.error("DLQ 처리 중 예외 발생: eventId={}, topic={}", 
+                event.getEventId(), topic, dlqException);
+        }
         
         throw new EventPublishException("이벤트 발행 실패 (재시도 초과)", lastException);
     }

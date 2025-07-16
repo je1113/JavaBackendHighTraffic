@@ -48,6 +48,10 @@ spring:
       batch-size: 16384
       linger-ms: 5
       buffer-memory: 33554432
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        compression.type: snappy
     consumer:
       group-id: inventory-service-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -56,6 +60,8 @@ spring:
       enable-auto-commit: false
       properties:
         spring.json.trusted.packages: "*"
+        max.poll.records: 100
+        fetch.min.bytes: 1024
 
 eureka:
   client:
@@ -110,3 +116,52 @@ management:
     export:
       prometheus:
         enabled: true
+
+# 애플리케이션별 설정
+app:
+  kafka:
+    topics:
+      stock-reserved: "inventory.stock.reserved"
+      stock-released: "inventory.stock.released"
+      stock-deducted: "inventory.stock.deducted"
+      stock-adjusted: "inventory.stock.adjusted"
+      low-stock-alert: "inventory.alerts.low-stock"
+      insufficient-stock: "inventory.alerts.insufficient-stock"
+      stock-added: "inventory.stock.added"
+      dead-letter-queue: "inventory.dlq"
+    publish:
+      retry:
+        max-attempts: 3
+        delay-ms: 1000
+        exponential-backoff: true
+        max-delay-ms: 10000
+      timeout-ms: 10000
+      async-timeout-ms: 5000
+      batch:
+        enabled: true
+        max-size: 100
+        timeout-ms: 1000
+    health:
+      enabled: true
+      timeout-ms: 5000
+    dlq:
+      enabled: true
+      max-retry-attempts: 5
+      retry-delay-ms: 30000
+  
+  inventory:
+    cache:
+      product-ttl: PT10M
+      stock-ttl: PT5M
+      reservation-ttl: PT30M
+    metrics:
+      enabled: true
+      report-interval: PT30S
+    alerts:
+      low-stock:
+        enabled: true
+        check-interval: PT5M
+        threshold-percentage: 10
+      insufficient-stock:
+        enabled: true
+        retry-notify-interval: PT1H
