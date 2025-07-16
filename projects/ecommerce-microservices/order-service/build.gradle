@@ -1,5 +1,5 @@
 plugins {
-    id 'com.palantir.docker' version '0.35.0'
+    id 'com.bmuschko.docker-spring-boot-application' version '9.4.0'
     id 'org.springframework.boot'
     id 'java'
 }
@@ -30,6 +30,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation "org.redisson:redisson-spring-boot-starter:${redissonVersion}"
     
+    // OpenAPI Documentation
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+    
     // MapStruct for Mapping
     implementation "org.mapstruct:mapstruct:${mapstructVersion}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
@@ -53,10 +56,12 @@ compileJava {
 
 // Docker 설정
 docker {
-    name "${project.name}:${project.version}"
-    dockerfile file('Dockerfile')
-    files bootJar.archiveFile
-    buildArgs(['JAR_FILE': "${bootJar.archiveFileName}"])
+    springBootApplication {
+        baseImage = 'openjdk:17-jre-slim'
+        maintainer = 'High Traffic E-commerce Team'
+        ports = [8080]
+        images = ["${project.name}:${project.version}", "${project.name}:latest"]
+    }
 }
 
 // JMH Performance Testing

@@ -4,9 +4,9 @@ import com.hightraffic.ecommerce.inventory.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.ReservationId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.StockQuantity;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
@@ -266,6 +266,33 @@ public interface RestoreStockUseCase {
         public ProductId getProductId() { return productId; }
         public boolean isSuccess() { return success; }
         public String getFailureReason() { return failureReason; }
+    }
+    
+    /**
+     * 예약 해제 결과
+     */
+    class ReleaseReservationResult {
+        private final List<ReleaseResult> results;
+        private final boolean allSuccess;
+        private final String orderId;
+        
+        public ReleaseReservationResult(List<ReleaseResult> results, String orderId) {
+            this.results = List.copyOf(results);
+            this.allSuccess = results.stream().allMatch(ReleaseResult::isSuccess);
+            this.orderId = orderId;
+        }
+        
+        public List<ReleaseResult> getResults() { return results; }
+        public boolean isAllSuccess() { return allSuccess; }
+        public String getOrderId() { return orderId; }
+        
+        public List<ReleaseResult> getSuccessResults() {
+            return results.stream().filter(ReleaseResult::isSuccess).toList();
+        }
+        
+        public List<ReleaseResult> getFailureResults() {
+            return results.stream().filter(r -> !r.isSuccess()).toList();
+        }
     }
     
     /**

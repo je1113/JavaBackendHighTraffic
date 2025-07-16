@@ -5,8 +5,8 @@ import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderStatus;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
 

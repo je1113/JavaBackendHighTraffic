@@ -5,10 +5,10 @@ import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 
-import javax.validation.Valid;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**

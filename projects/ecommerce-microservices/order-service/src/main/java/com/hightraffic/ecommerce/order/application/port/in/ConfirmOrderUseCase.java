@@ -2,8 +2,8 @@ package com.hightraffic.ecommerce.order.application.port.in;
 
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * 주문 확정 Use Case

@@ -28,12 +28,35 @@ public abstract class DomainEvent {
     @JsonProperty("aggregateId")
     private final String aggregateId;
     
+    @JsonProperty("aggregateType")
+    private final String aggregateType;
+    
+    @JsonProperty("correlationId")
+    private final String correlationId;
+    
+    @JsonProperty("sourceService")
+    private final String sourceService;
+    
+    protected DomainEvent() {
+        this.eventId = UUID.randomUUID().toString();
+        this.eventType = this.getClass().getSimpleName();
+        this.timestamp = Instant.now();
+        this.version = 1;
+        this.aggregateId = null;
+        this.aggregateType = null;
+        this.correlationId = null;
+        this.sourceService = null;
+    }
+    
     protected DomainEvent(String aggregateId) {
         this.eventId = UUID.randomUUID().toString();
         this.eventType = this.getClass().getSimpleName();
         this.timestamp = Instant.now();
         this.version = 1;
         this.aggregateId = aggregateId;
+        this.aggregateType = null;
+        this.correlationId = null;
+        this.sourceService = null;
     }
     
     protected DomainEvent(String eventId, String eventType, Instant timestamp, 
@@ -43,6 +66,20 @@ public abstract class DomainEvent {
         this.timestamp = timestamp;
         this.version = version;
         this.aggregateId = aggregateId;
+        this.aggregateType = null;
+        this.correlationId = null;
+        this.sourceService = null;
+    }
+    
+    protected DomainEvent(String aggregateId, String aggregateType, String correlationId, String sourceService) {
+        this.eventId = UUID.randomUUID().toString();
+        this.eventType = this.getClass().getSimpleName();
+        this.timestamp = Instant.now();
+        this.version = 1;
+        this.aggregateId = aggregateId;
+        this.aggregateType = aggregateType;
+        this.correlationId = correlationId;
+        this.sourceService = sourceService;
     }
     
     public String getEventId() {
@@ -63,6 +100,18 @@ public abstract class DomainEvent {
     
     public String getAggregateId() {
         return aggregateId;
+    }
+    
+    public String getAggregateType() {
+        return aggregateType;
+    }
+    
+    public String getCorrelationId() {
+        return correlationId;
+    }
+    
+    public String getSourceService() {
+        return sourceService;
     }
     
     @Override

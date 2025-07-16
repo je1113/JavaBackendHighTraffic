@@ -4,10 +4,10 @@ import com.hightraffic.ecommerce.inventory.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.ReservationId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.StockQuantity;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Positive;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 /**
@@ -171,6 +171,33 @@ public interface ReserveStockUseCase {
         public boolean isSuccess() { return success; }
         public ReservationId getReservationId() { return reservationId; }
         public String getFailureReason() { return failureReason; }
+    }
+    
+    /**
+     * 일괄 예약 결과
+     */
+    class BatchReservationResult {
+        private final List<ReservationResult> results;
+        private final boolean allSuccess;
+        private final String orderId;
+        
+        public BatchReservationResult(List<ReservationResult> results, String orderId) {
+            this.results = List.copyOf(results);
+            this.allSuccess = results.stream().allMatch(ReservationResult::isSuccess);
+            this.orderId = orderId;
+        }
+        
+        public List<ReservationResult> getResults() { return results; }
+        public boolean isAllSuccess() { return allSuccess; }
+        public String getOrderId() { return orderId; }
+        
+        public List<ReservationResult> getSuccessResults() {
+            return results.stream().filter(ReservationResult::isSuccess).toList();
+        }
+        
+        public List<ReservationResult> getFailureResults() {
+            return results.stream().filter(r -> !r.isSuccess()).toList();
+        }
     }
     
     /**

@@ -1,5 +1,5 @@
 plugins {
-    id 'com.palantir.docker' version '0.35.0'
+    id 'com.bmuschko.docker-spring-boot-application' version '9.4.0'
 }
 
 description = 'API Gateway with Spring Cloud Gateway'
@@ -46,8 +46,10 @@ configurations.all {
 
 // Docker 설정
 docker {
-    name "${project.name}:${project.version}"
-    dockerfile file('Dockerfile')
-    files bootJar.archiveFile
-    buildArgs(['JAR_FILE': "${bootJar.archiveFileName}"])
+    springBootApplication {
+        baseImage = 'openjdk:17-jre-slim'
+        maintainer = 'High Traffic E-commerce Team'
+        ports = [8080]
+        images = ["${project.name}:${project.version}", "${project.name}:latest"]
+    }
 }

@@ -6,8 +6,8 @@ import com.hightraffic.ecommerce.inventory.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.ReservationId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.StockQuantity;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -149,6 +149,38 @@ public interface GetStockUseCase {
         public int getLimit() {
             return limit;
         }
+    }
+    
+    /**
+     * 재고 정보
+     */
+    class StockInfo {
+        private final ProductId productId;
+        private final StockQuantity availableQuantity;
+        private final StockQuantity reservedQuantity;
+        private final StockQuantity totalQuantity;
+        private final boolean isActive;
+        private final boolean isLowStock;
+        private final boolean isOutOfStock;
+        
+        public StockInfo(Product product) {
+            this.productId = product.getProductId();
+            this.availableQuantity = product.getAvailableQuantity();
+            this.reservedQuantity = product.getReservedQuantity();
+            this.totalQuantity = product.getTotalQuantity();
+            this.isActive = product.isActive();
+            this.isLowStock = product.isLowStock();
+            this.isOutOfStock = product.isOutOfStock();
+        }
+        
+        // Getters
+        public ProductId getProductId() { return productId; }
+        public StockQuantity getAvailableQuantity() { return availableQuantity; }
+        public StockQuantity getReservedQuantity() { return reservedQuantity; }
+        public StockQuantity getTotalQuantity() { return totalQuantity; }
+        public boolean isActive() { return isActive; }
+        public boolean isLowStock() { return isLowStock; }
+        public boolean isOutOfStock() { return isOutOfStock; }
     }
     
     /**
