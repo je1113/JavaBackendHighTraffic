@@ -46,7 +46,6 @@ dependencies {
     testImplementation 'org.springframework.kafka:spring-kafka-test'
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:kafka'
-    testImplementation 'org.testcontainers:redis'
     testImplementation 'org.testcontainers:junit-jupiter'
     
     // Concurrency Testing
