@@ -1,6 +1,7 @@
 package com.hightraffic.ecommerce.order.domain.model;
 
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
+import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 
 import jakarta.persistence.*;
 import java.io.Serializable;

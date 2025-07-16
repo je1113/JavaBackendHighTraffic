@@ -3,7 +3,7 @@ package com.hightraffic.ecommerce.order.domain.service;
 import com.hightraffic.ecommerce.order.config.OrderBusinessRulesConfig;
 import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.OrderItem;
-import com.hightraffic.ecommerce.order.domain.model.ProductId;
+import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.repository.OrderRepository;

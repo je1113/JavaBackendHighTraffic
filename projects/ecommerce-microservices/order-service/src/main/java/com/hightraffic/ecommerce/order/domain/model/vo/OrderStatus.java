@@ -198,4 +198,11 @@ public enum OrderStatus {
     public boolean isActive() {
         return this != CANCELLED && this != FAILED && this != REFUNDED;
     }
+    
+    /**
+     * 배송 이후 상태인지 확인
+     */
+    public boolean isAfterShipping() {
+        return this == DELIVERED || this == COMPLETED || this == REFUNDING || this == REFUNDED;
+    }
 }

@@ -4,6 +4,7 @@ import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderStatus;
+import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -128,6 +129,13 @@ public class Order implements Serializable {
         OrderItem item = findItemByProductId(productId);
         item.changeQuantity(newQuantity);
         recalculateTotalAmount();
+    }
+    
+    /**
+     * 주문 아이템 수량 업데이트 (alias for changeItemQuantity)
+     */
+    public void updateItemQuantity(ProductId productId, int newQuantity) {
+        changeItemQuantity(productId, newQuantity);
     }
     
     /**
@@ -348,6 +356,10 @@ public class Order implements Serializable {
     
     // Getters
     public OrderId getId() {
+        return id;
+    }
+    
+    public OrderId getOrderId() {
         return id;
     }
     

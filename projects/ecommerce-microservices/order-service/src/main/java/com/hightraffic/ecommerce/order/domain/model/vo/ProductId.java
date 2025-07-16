@@ -1,4 +1,4 @@
-package com.hightraffic.ecommerce.order.domain.model;
+package com.hightraffic.ecommerce.order.domain.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;

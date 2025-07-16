@@ -1,6 +1,6 @@
 package com.hightraffic.ecommerce.order.domain.exception;
 
-import com.hightraffic.ecommerce.order.domain.model.ProductId;
+import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 
 /**
  * 중복된 주문 아이템을 추가하려 할 때 발생하는 예외

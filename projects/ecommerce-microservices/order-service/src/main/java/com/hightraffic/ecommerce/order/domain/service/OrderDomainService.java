@@ -2,7 +2,7 @@ package com.hightraffic.ecommerce.order.domain.service;
 
 import com.hightraffic.ecommerce.order.config.OrderBusinessRulesConfig;
 import com.hightraffic.ecommerce.order.domain.model.Order;
-import com.hightraffic.ecommerce.order.domain.model.ProductId;
+import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
@@ -86,7 +86,7 @@ public class OrderDomainService {
         });
         
         // 소스 주문은 취소 처리
-        sourceOrder.cancel();
+        sourceOrder.cancel("주문이 다른 주문과 병합되었습니다");
         
         // 병합된 주문에 대한 이벤트 발행
         // TODO: OrderMergedEvent 발행

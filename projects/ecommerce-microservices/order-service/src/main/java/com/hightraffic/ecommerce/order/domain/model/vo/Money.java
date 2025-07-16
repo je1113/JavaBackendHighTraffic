@@ -70,6 +70,13 @@ public final class Money implements Serializable, Comparable<Money> {
         this.currency = currency;
     }
     
+    /**
+     * 금액과 통화 코드로 Money 생성 (String currency)
+     */
+    public Money(BigDecimal amount, String currencyCode) {
+        this(amount, Currency.getInstance(currencyCode));
+    }
+    
     public BigDecimal getAmount() {
         return amount;
     }

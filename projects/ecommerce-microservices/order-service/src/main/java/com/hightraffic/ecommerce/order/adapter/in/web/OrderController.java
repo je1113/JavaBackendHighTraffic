@@ -5,13 +5,6 @@ import com.hightraffic.ecommerce.order.application.port.in.*;
 import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.OrderItem;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +28,6 @@ import java.util.stream.Collectors;
  * 헥사고날 아키텍처의 Inbound Adapter로서
  * HTTP 요청을 Application Service로 전달하는 역할
  */
-@Tag(name = "Order API", description = "주문 관리 API")
 @RestController
 @RequestMapping("/api/v1/orders")
 @Validated
@@ -61,16 +53,6 @@ public class OrderController {
     /**
      * 주문 생성
      */
-    @Operation(summary = "주문 생성", description = "새로운 주문을 생성합니다")
-    @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "주문 생성 성공"),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청", 
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "409", description = "재고 부족",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "500", description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
     @PostMapping
     public ResponseEntity<CreateOrderResponse> createOrder(
             @Valid @RequestBody CreateOrderRequest request) {
@@ -96,15 +78,8 @@ public class OrderController {
     /**
      * 주문 조회
      */
-    @Operation(summary = "주문 조회", description = "주문 ID로 주문을 조회합니다")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "조회 성공"),
-        @ApiResponse(responseCode = "404", description = "주문을 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
     @GetMapping("/{orderId}")
     public ResponseEntity<GetOrderResponse> getOrder(
-            @Parameter(description = "주문 ID", required = true)
             @PathVariable String orderId) {
         
         log.debug("주문 조회 요청: orderId={}", orderId);
@@ -122,15 +97,9 @@ public class OrderController {
     /**
      * 고객별 주문 목록 조회
      */
-    @Operation(summary = "고객 주문 목록 조회", description = "고객 ID로 주문 목록을 조회합니다")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "조회 성공")
-    })
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<OrderListResponse> getCustomerOrders(
-            @Parameter(description = "고객 ID", required = true)
             @PathVariable String customerId,
-            @Parameter(description = "주문 상태 필터")
             @RequestParam(required = false) String status,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
@@ -152,17 +121,8 @@ public class OrderController {
     /**
      * 주문 확정
      */
-    @Operation(summary = "주문 확정", description = "결제 완료된 주문을 확정합니다")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "주문 확정 성공"),
-        @ApiResponse(responseCode = "400", description = "잘못된 상태 전이",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "404", description = "주문을 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
     @PostMapping("/{orderId}/confirm")
     public ResponseEntity<Void> confirmOrder(
-            @Parameter(description = "주문 ID", required = true)
             @PathVariable String orderId) {
         
         log.info("주문 확정 요청: orderId={}", orderId);
@@ -180,17 +140,8 @@ public class OrderController {
     /**
      * 주문 취소
      */
-    @Operation(summary = "주문 취소", description = "주문을 취소합니다")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "주문 취소 성공"),
-        @ApiResponse(responseCode = "400", description = "취소 불가능한 상태",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "404", description = "주문을 찾을 수 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<Void> cancelOrder(
-            @Parameter(description = "주문 ID", required = true)
             @PathVariable String orderId,
             @Valid @RequestBody CancelOrderRequest request) {
         
