@@ -37,12 +37,25 @@ public class StockQuantity {
         return new StockQuantity(value);
     }
     
+    public static StockQuantity of(java.math.BigDecimal value) {
+        Objects.requireNonNull(value, "BigDecimal value cannot be null");
+        return new StockQuantity(value.intValue());
+    }
+    
+    public static StockQuantity fromBigDecimal(java.math.BigDecimal value) {
+        return of(value);
+    }
+    
     public Integer getValue() {
         return value;
     }
     
     public int intValue() {
         return value;
+    }
+    
+    public java.math.BigDecimal toBigDecimal() {
+        return java.math.BigDecimal.valueOf(value);
     }
     
     /**
@@ -133,6 +146,39 @@ public class StockQuantity {
     
     public StockQuantity safeSubtract(int quantity) {
         return safeSubtract(StockQuantity.of(quantity));
+    }
+    
+    /**
+     * 수량 나누기
+     */
+    public StockQuantity divide(int divisor) {
+        if (divisor <= 0) {
+            throw new IllegalArgumentException("Divisor must be positive: " + divisor);
+        }
+        return new StockQuantity(this.value / divisor);
+    }
+    
+    public StockQuantity divide(StockQuantity other) {
+        Objects.requireNonNull(other, "Cannot divide by null quantity");
+        if (other.value <= 0) {
+            throw new IllegalArgumentException("Cannot divide by zero or negative quantity");
+        }
+        return new StockQuantity(this.value / other.value);
+    }
+    
+    /**
+     * 수량 곱하기
+     */
+    public StockQuantity multiply(int multiplier) {
+        if (multiplier < 0) {
+            throw new IllegalArgumentException("Multiplier cannot be negative: " + multiplier);
+        }
+        return new StockQuantity(this.value * multiplier);
+    }
+    
+    public StockQuantity multiply(StockQuantity other) {
+        Objects.requireNonNull(other, "Cannot multiply by null quantity");
+        return new StockQuantity(this.value * other.value);
     }
     
     @Override

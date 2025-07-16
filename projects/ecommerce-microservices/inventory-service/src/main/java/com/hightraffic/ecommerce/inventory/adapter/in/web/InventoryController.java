@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hightraffic.ecommerce.inventory.adapter.in.web.dto.*;
 import com.hightraffic.ecommerce.inventory.application.port.in.*;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.ProductId;
+import com.hightraffic.ecommerce.inventory.domain.model.vo.StockQuantity;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -125,9 +126,9 @@ public class InventoryController {
         ReserveStockUseCase.ReserveStockCommand command = 
             new ReserveStockUseCase.ReserveStockCommand(
                 ProductId.of(productId),
-                request.quantity(),
+                StockQuantity.fromBigDecimal(request.quantity()),
                 request.reservationId(),
-                Duration.ofMinutes(request.timeoutMinutes() != null ? request.timeoutMinutes() : 30)
+                request.timeoutMinutes() != null ? request.timeoutMinutes() : 30
             );
         
         // UseCase 실행
@@ -137,9 +138,9 @@ public class InventoryController {
         ReserveStockResponse response = ReserveStockResponse.success(
             result.reservationId(),
             result.productId(),
-            result.reservedQuantity(),
-            result.availableQuantity(),
-            result.expiresAt()
+            result.reservedQuantity().toBigDecimal(),
+            result.availableQuantity().toBigDecimal(),
+            java.time.LocalDateTime.ofInstant(result.expiresAt(), java.time.ZoneId.systemDefault())
         );
         
         log.info("재고 예약 성공: reservationId={}", result.reservationId());
@@ -167,7 +168,7 @@ public class InventoryController {
             request.items().stream()
                 .map(item -> new ReserveStockUseCase.ReserveStockCommand.ReservationItem(
                     ProductId.of(item.productId()),
-                    item.quantity()
+                    StockQuantity.fromBigDecimal(item.quantity())
                 ))
                 .collect(Collectors.toList());
         
@@ -273,7 +274,7 @@ public class InventoryController {
                 RestoreStockUseCase.AddStockCommand command = 
                     new RestoreStockUseCase.AddStockCommand(
                         ProductId.of(productId),
-                        request.quantity(),
+                        StockQuantity.fromBigDecimal(request.quantity()),
                         request.reason(),
                         request.reasonCode()
                     );
@@ -283,7 +284,7 @@ public class InventoryController {
                 DeductStockUseCase.DeductStockCommand command = 
                     new DeductStockUseCase.DeductStockCommand(
                         ProductId.of(productId),
-                        request.quantity()
+                        StockQuantity.fromBigDecimal(request.quantity())
                     );
                 deductStockUseCase.deductStock(command);
             }
@@ -291,7 +292,7 @@ public class InventoryController {
                 RestoreStockUseCase.AdjustStockCommand command = 
                     new RestoreStockUseCase.AdjustStockCommand(
                         ProductId.of(productId),
-                        request.quantity(),
+                        StockQuantity.fromBigDecimal(request.quantity()),
                         request.reason(),
                         request.reasonCode()
                     );
@@ -341,10 +342,10 @@ public class InventoryController {
         return new GetStockResponse(
             info.getProductId().toString(),
             info.getProductName(),
-            info.getTotalQuantity().getValue(),
-            info.getAvailableQuantity().getValue(),
-            info.getReservedQuantity().getValue(),
-            info.getLowStockThreshold().getValue(),
+            info.getTotalQuantity().toBigDecimal(),
+            info.getAvailableQuantity().toBigDecimal(),
+            info.getReservedQuantity().toBigDecimal(),
+            info.getLowStockThreshold().toBigDecimal(),
             info.isLowStock(),
             info.isOutOfStock(),
             reservations,
@@ -359,10 +360,10 @@ public class InventoryController {
         return new GetStockResponse(
             lowStockInfo.getProductId().toString(),
             lowStockInfo.getProductName(),
-            lowStockInfo.getAvailableQuantity().getValue(), // total은 available과 같다고 가정
-            lowStockInfo.getAvailableQuantity().getValue(),
-            0, // reserved quantity 정보가 없으므로 0으로 처리
-            lowStockInfo.getLowStockThreshold().getValue(),
+            lowStockInfo.getAvailableQuantity().toBigDecimal(), // total은 available과 같다고 가정
+            lowStockInfo.getAvailableQuantity().toBigDecimal(),
+            java.math.BigDecimal.ZERO, // reserved quantity 정보가 없으므로 0으로 처리
+            lowStockInfo.getLowStockThreshold().toBigDecimal(),
             true, // 낮은 재고 상품이므로 true
             lowStockInfo.getAvailableQuantity().isZero(),
             reservations,
@@ -378,10 +379,10 @@ public class InventoryController {
                 .map(info -> GetStockResponse.BatchGetStockResponse.ProductStock.of(
                     info.getProductId().toString(),
                     info.getProductName(),
-                    info.getAvailableQuantity().getValue(),
-                    info.getReservedQuantity().getValue()
+                    info.getAvailableQuantity().toBigDecimal(),
+                    info.getReservedQuantity().toBigDecimal()
                 ))
-                .collect(Collectors.toList());
+                .collect(Collectors.<GetStockResponse.BatchGetStockResponse.ProductStock>toList());
         
         return new GetStockResponse.BatchGetStockResponse(
             products,
@@ -398,19 +399,19 @@ public class InventoryController {
             result.successfulReservations().stream()
                 .map(res -> ReserveStockResponse.BatchReserveStockResponse.ReservationResult.success(
                     res.productId(),
-                    res.reservedQuantity(),
-                    res.availableQuantity()
+                    res.reservedQuantity().toBigDecimal(),
+                    res.availableQuantity().toBigDecimal()
                 ))
-                .collect(Collectors.toList());
+                .collect(Collectors.<ReserveStockResponse.BatchReserveStockResponse.ReservationResult>toList());
         
         // 실패 결과 추가
         results.addAll(
             result.failedReservations().stream()
                 .map(fail -> ReserveStockResponse.BatchReserveStockResponse.ReservationResult.failed(
                     fail.productId(),
-                    fail.reason()
+                    fail.getFailureReason()
                 ))
-                .collect(Collectors.toList())
+                .collect(Collectors.<ReserveStockResponse.BatchReserveStockResponse.ReservationResult>toList())
         );
         
         String status = result.isFullySuccessful() ? "SUCCESS" : 

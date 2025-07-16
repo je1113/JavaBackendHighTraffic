@@ -3,6 +3,8 @@ package com.hightraffic.ecommerce.inventory.application.service;
 import com.hightraffic.ecommerce.common.event.inventory.StockReservedEvent;
 import com.hightraffic.ecommerce.common.event.inventory.InsufficientStockEvent;
 import com.hightraffic.ecommerce.inventory.application.port.in.ReserveStockUseCase;
+import com.hightraffic.ecommerce.inventory.application.port.in.ReserveStockUseCase.ReservationResult;
+import com.hightraffic.ecommerce.inventory.application.port.in.ReserveStockUseCase.BatchReservationResult;
 import com.hightraffic.ecommerce.inventory.application.port.out.DistributedLockPort;
 import com.hightraffic.ecommerce.inventory.application.port.out.LoadProductPort;
 import com.hightraffic.ecommerce.inventory.application.port.out.PublishEventPort;
@@ -11,6 +13,7 @@ import com.hightraffic.ecommerce.inventory.domain.model.Product;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.ReservationId;
 import com.hightraffic.ecommerce.inventory.domain.model.vo.StockQuantity;
+import com.hightraffic.ecommerce.inventory.domain.exception.ProductNotFoundException;
 import com.hightraffic.ecommerce.inventory.domain.service.StockDomainService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +64,7 @@ public class ReserveStockService implements ReserveStockUseCase {
     }
     
     @Override
-    public ReservationId reserveStock(ReserveStockCommand command) {
+    public ReservationResult reserveStock(ReserveStockCommand command) {
         log.info("Reserving stock for product: {} with quantity: {}", 
             command.getProductId(), command.getQuantity());
         
@@ -90,7 +93,7 @@ public class ReserveStockService implements ReserveStockUseCase {
         List<ReservationId> successfulReservations = new ArrayList<>();
         
         try {
-            for (StockItem item : command.getStockItems()) {
+            for (ReserveBatchStockCommand.StockItem item : command.getStockItems()) {
                 try {
                     ReserveStockCommand reserveCommand = new ReserveStockCommand(
                         item.getProductId(),
@@ -99,9 +102,10 @@ public class ReserveStockService implements ReserveStockUseCase {
                         null // 기본 예약 시간 사용
                     );
                     
-                    ReservationId reservationId = reserveStock(reserveCommand);
+                    ReservationResult reservationResult = reserveStock(reserveCommand);
+                    ReservationId reservationId = reservationResult.getReservationId();
                     successfulReservations.add(reservationId);
-                    results.add(new ReservationResult(item.getProductId(), reservationId));
+                    results.add(new ReservationResult(item.getProductId(), "SUCCESS"));
                     
                 } catch (Exception e) {
                     log.error("Failed to reserve stock for product: {}", item.getProductId(), e);
@@ -128,7 +132,7 @@ public class ReserveStockService implements ReserveStockUseCase {
     /**
      * 실제 예약 처리 로직
      */
-    private ReservationId processReservation(ReserveStockCommand command) {
+    private ReservationResult processReservation(ReserveStockCommand command) {
         // 1. 상품 조회
         Product product = loadProductPort.loadProduct(command.getProductId())
             .orElseThrow(() -> new ProductNotFoundException(command.getProductId()));
@@ -160,7 +164,16 @@ public class ReserveStockService implements ReserveStockUseCase {
         log.info("Stock reserved successfully. Product: {}, Reservation: {}", 
             command.getProductId(), reservationId);
         
-        return reservationId;
+        // ReservationResult 생성하여 반환
+        return new ReservationResult(
+            command.getProductId(),
+            reservationId,
+            command.getQuantity(),
+            savedProduct.getAvailableQuantity(),
+            java.time.Instant.now().plusSeconds(
+                command.getReservationMinutes() != null ? 
+                command.getReservationMinutes() * 60 : 1800) // 기본 30분
+        );
     }
     
     /**
@@ -185,13 +198,24 @@ public class ReserveStockService implements ReserveStockUseCase {
      */
     private void publishStockReservedEvent(Product product, ReservationId reservationId, 
                                           ReserveStockCommand command) {
+        StockReservedEvent.ReservedItem reservedItem = new StockReservedEvent.ReservedItem(
+            product.getProductId().getValue().toString(),
+            product.getProductName(),
+            command.getQuantity().getValue(),
+            "MAIN_WAREHOUSE",
+            "AVAILABLE",
+            0.0
+        );
+        
         StockReservedEvent event = new StockReservedEvent(
             product.getProductId().getValue().toString(),
-            command.getOrderId(),
             reservationId.getValue().toString(),
-            command.getQuantity().getValue(),
-            product.getAvailableQuantity().getValue(),
-            LocalDateTime.now()
+            command.getOrderId(),
+            command.getOrderId(), // customerId (using orderId as placeholder)
+            List.of(reservedItem),
+            java.time.Instant.now().plus(command.getReservationMinutes() != null ? command.getReservationMinutes() : 30, java.time.temporal.ChronoUnit.MINUTES),
+            "IMMEDIATE",
+            1
         );
         
         publishEventPort.publishEvent(event);
@@ -202,10 +226,11 @@ public class ReserveStockService implements ReserveStockUseCase {
      */
     private void publishInsufficientStockEvent(ReserveStockCommand command) {
         InsufficientStockEvent event = new InsufficientStockEvent(
-            command.getProductId().getValue().toString(),
             command.getOrderId(),
+            command.getProductId().getValue().toString(),
             command.getQuantity().getValue(),
-            LocalDateTime.now()
+            0, // availableQuantity (placeholder)
+            "재고 부족"
         );
         
         publishEventPort.publishEvent(event);
@@ -225,6 +250,34 @@ public class ReserveStockService implements ReserveStockUseCase {
         public StockReservationException(String message) {
             super(message);
         }
+    }
+    
+    @Override
+    public BatchReservationResult reserveStockBatch(BatchReserveStockCommand command) {
+        log.info("Reserving stock batch: {} with {} items", 
+            command.getReservationId(), command.getItems().size());
+        
+        List<ReservationResult> results = new ArrayList<>();
+        
+        for (ReserveStockCommand.ReservationItem item : command.getItems()) {
+            try {
+                ReserveStockCommand reserveCommand = new ReserveStockCommand(
+                    item.getProductId(),
+                    item.getQuantity(),
+                    command.getReservationId(), // orderId로 사용
+                    command.getTimeout() != null ? (int) command.getTimeout().toMinutes() : 30
+                );
+                
+                ReservationResult result = reserveStock(reserveCommand);
+                results.add(result);
+                
+            } catch (Exception e) {
+                log.error("Failed to reserve stock for product: {}", item.getProductId(), e);
+                results.add(new ReservationResult(item.getProductId(), e.getMessage()));
+            }
+        }
+        
+        return new BatchReservationResult(results, command.getReservationId());
     }
     
     /**

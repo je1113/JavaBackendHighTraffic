@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
         
         ErrorResponse response = ErrorResponse.insufficientStock(
             request.getRequestURI(),
-            ex.getProductId(),
+            ex.getProductId().getValue().toString(),
             ex.getRequestedQuantity().toString(),
             ex.getAvailableQuantity().toString()
         );
@@ -68,7 +68,7 @@ public class GlobalExceptionHandler {
         log.warn("상품을 찾을 수 없음: {}", ex.getMessage());
         
         Map<String, Object> details = new HashMap<>();
-        details.put("productId", ex.getProductId());
+        details.put("productId", ex.getProductId().getValue().toString());
         
         ErrorResponse response = ErrorResponse.withDetails(
             HttpStatus.NOT_FOUND.value(),

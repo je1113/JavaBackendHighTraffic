@@ -85,27 +85,22 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
         }
     }
     
-    @Override
     public void publishStockReservedEvent(StockReservedEvent event) {
         publishWithRetry(event, stockReservedTopic);
     }
     
-    @Override
     public void publishStockReleasedEvent(StockReleasedEvent event) {
         publishWithRetry(event, stockReleasedTopic);
     }
     
-    @Override
     public void publishStockDeductedEvent(StockDeductedEvent event) {
         publishWithRetry(event, stockDeductedTopic);
     }
     
-    @Override
     public void publishStockAdjustedEvent(StockAdjustedEvent event) {
         publishWithRetry(event, stockAdjustedTopic);
     }
     
-    @Override
     public void publishLowStockAlertEvent(LowStockAlertEvent event) {
         // 낮은 재고 알림은 비동기로 처리 (실패해도 무방)
         publishAsync(event, lowStockAlertTopic);

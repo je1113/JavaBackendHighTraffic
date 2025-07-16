@@ -125,7 +125,7 @@ public class DeductStockService implements DeductStockUseCase {
         
         List<DeductionResult> results = new ArrayList<>();
         
-        for (DeductionItem item : command.getDeductionItems()) {
+        for (DeductBatchReservedStockCommand.DeductionItem item : command.getDeductionItems()) {
             try {
                 DeductReservedStockCommand deductCommand = new DeductReservedStockCommand(
                     item.getReservationId(),
@@ -229,11 +229,10 @@ public class DeductStockService implements DeductStockUseCase {
     private void publishStockDeductedEvent(Product product, StockReservation reservation, 
                                          String orderId) {
         StockDeductedEvent event = new StockDeductedEvent(
-            product.getProductId().getValue().toString(),
             orderId,
+            product.getProductId().getValue().toString(),
             reservation.getQuantity().getValue(),
-            product.getTotalQuantity().getValue(),
-            LocalDateTime.now()
+            product.getTotalQuantity().getValue()
         );
         
         publishEventPort.publishEvent(event);
@@ -244,11 +243,10 @@ public class DeductStockService implements DeductStockUseCase {
      */
     private void publishDirectDeductionEvent(Product product, DeductStockDirectlyCommand command) {
         StockDeductedEvent event = new StockDeductedEvent(
-            product.getProductId().getValue().toString(),
             command.getReferenceId() != null ? command.getReferenceId() : "DIRECT_DEDUCTION",
+            product.getProductId().getValue().toString(),
             command.getQuantity().getValue(),
-            product.getTotalQuantity().getValue(),
-            LocalDateTime.now()
+            product.getTotalQuantity().getValue()
         );
         
         publishEventPort.publishEvent(event);

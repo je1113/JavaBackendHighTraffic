@@ -121,7 +121,7 @@ public class KafkaConfiguration {
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         
         // 에러 핸들러 설정
-        factory.setCommonErrorHandler(errorHandler);
+        factory.setCommonErrorHandler(new org.springframework.kafka.listener.DefaultErrorHandler());
         
         // 재고 서비스 특화 설정
         factory.getContainerProperties().setPollTimeout(3000);
@@ -180,7 +180,7 @@ public class KafkaConfiguration {
         KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory);
         
         // 재고 이벤트 발행 시 실패 처리
-        template.setProducerInterceptors(null);
+        // Producer interceptors are configured at factory level
         
         log.info("재고 서비스 Kafka Template 설정 완료");
         

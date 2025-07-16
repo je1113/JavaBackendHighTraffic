@@ -432,29 +432,36 @@ public class Product {
         if (isLowStock()) {
             List<LowStockAlertEvent.LowStockItem> lowStockItems = List.of(
                 new LowStockAlertEvent.LowStockItem(
-                    productId.getValue().toString(),
-                    productName,
-                    stock.getAvailableQuantity().getValue(),
-                    lowStockThreshold.getValue(),
-                    "MAIN_WAREHOUSE",
-                    0.0, // estimatedValue
-                    "KG" // unit
+                    productId.getValue().toString(), // productId
+                    productName, // productName
+                    "MAIN_WAREHOUSE", // warehouseId
+                    stock.getAvailableQuantity().getValue(), // currentStock
+                    lowStockThreshold.getValue(), // minimumStock
+                    lowStockThreshold.getValue(), // reorderPoint
+                    lowStockThreshold.getValue() * 2, // optimalStock
+                    0.0, // dailyAverageUsage
+                    null, // daysUntilStockout
+                    0, // pendingOrders
+                    0, // incomingStock
+                    null, // expectedDeliveryDate
+                    null, // lastSoldDate
+                    "LOW" // stockStatus
                 )
             );
             
             addDomainEvent(new LowStockAlertEvent(
                 productId.getValue().toString(), // inventoryId
                 "LOW_STOCK_ALERT", // alertId
-                "WAREHOUSE", // alertType
-                "LOW_STOCK", // severity
-                lowStockItems,
-                1, // priority
-                0.0, // totalEstimatedValue
-                List.of("INVENTORY_MANAGER"), // notifyRoles
-                false, // isUrgent
-                List.of("EMAIL", "SMS"), // notificationChannels
-                java.time.Instant.now(), // alertTime
-                "Low stock threshold reached" // description
+                "WARNING", // alertLevel
+                "BELOW_MINIMUM", // alertType
+                lowStockItems, // lowStockItems
+                1, // totalAffectedProducts
+                0.0, // totalValueAtRisk
+                List.of("재주문 필요"), // recommendedActions
+                false, // notificationSent
+                List.of("inventory-manager"), // notifiedParties
+                null, // previousAlertTime
+                "FIRST_TIME" // alertFrequency
             ));
         }
     }

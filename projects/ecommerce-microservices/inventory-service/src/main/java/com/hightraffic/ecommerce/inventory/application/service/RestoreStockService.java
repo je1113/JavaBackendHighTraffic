@@ -3,6 +3,12 @@ package com.hightraffic.ecommerce.inventory.application.service;
 import com.hightraffic.ecommerce.common.event.inventory.StockReleasedEvent;
 import com.hightraffic.ecommerce.common.event.inventory.StockAdjustedEvent;
 import com.hightraffic.ecommerce.inventory.application.port.in.RestoreStockUseCase;
+import com.hightraffic.ecommerce.inventory.application.port.in.RestoreStockUseCase.ReleaseReservationResult;
+import com.hightraffic.ecommerce.inventory.application.port.in.RestoreStockUseCase.BatchReleaseResult;
+import com.hightraffic.ecommerce.inventory.application.port.in.RestoreStockUseCase.ReleaseResult;
+import com.hightraffic.ecommerce.inventory.domain.model.StockReservation;
+import com.hightraffic.ecommerce.inventory.domain.model.vo.StockQuantity;
+import com.hightraffic.ecommerce.inventory.domain.exception.ProductNotFoundException;
 import com.hightraffic.ecommerce.inventory.application.port.out.DistributedLockPort;
 import com.hightraffic.ecommerce.inventory.application.port.out.LoadProductPort;
 import com.hightraffic.ecommerce.inventory.application.port.out.PublishEventPort;
@@ -62,7 +68,7 @@ public class RestoreStockService implements RestoreStockUseCase {
     }
     
     @Override
-    public void releaseReservation(ReleaseReservationCommand command) {
+    public ReleaseReservationResult releaseReservation(ReleaseReservationCommand command) {
         log.info("Releasing reservation: {} for order: {}", 
             command.getReservationId(), command.getOrderId());
         
@@ -70,15 +76,12 @@ public class RestoreStockService implements RestoreStockUseCase {
         Product product = findProductByReservation(command.getReservationId());
         String lockKey = generateLockKey(product.getProductId());
         
-        distributedLockPort.executeWithLock(
+        return distributedLockPort.executeWithLock(
             lockKey,
             LOCK_WAIT_TIME,
             LOCK_LEASE_TIME,
             LOCK_TIME_UNIT,
-            () -> {
-                processReservationRelease(product, command);
-                return null;
-            }
+            () -> processReservationRelease(product, command)
         );
     }
     
@@ -89,7 +92,7 @@ public class RestoreStockService implements RestoreStockUseCase {
         
         List<ReleaseResult> results = new ArrayList<>();
         
-        for (ReleaseItem item : command.getReleaseItems()) {
+        for (RestoreStockUseCase.ReleaseBatchReservationsCommand.ReleaseItem item : command.getReleaseItems()) {
             try {
                 ReleaseReservationCommand releaseCommand = new ReleaseReservationCommand(
                     item.getReservationId(),
@@ -168,7 +171,19 @@ public class RestoreStockService implements RestoreStockUseCase {
     /**
      * 예약 해제 처리
      */
-    private void processReservationRelease(Product product, ReleaseReservationCommand command) {
+    private ReleaseReservationResult processReservationRelease(Product product, ReleaseReservationCommand command) {
+        // 예약 정보 조회 (해제 전)
+        StockReservation reservation = product.getReservation(command.getReservationId());
+        if (reservation == null) {
+            return new ReleaseReservationResult(
+                product.getProductId(), 
+                command.getReservationId(), 
+                "Reservation not found"
+            );
+        }
+        
+        StockQuantity releasedQuantity = reservation.getQuantity();
+        
         // 1. 예약 해제
         product.releaseReservation(command.getReservationId(), command.getOrderId());
         
@@ -180,6 +195,14 @@ public class RestoreStockService implements RestoreStockUseCase {
         
         log.info("Reservation released successfully. Product: {}, Reservation: {}", 
             product.getProductId(), command.getReservationId());
+        
+        // 4. 결과 반환
+        return new ReleaseReservationResult(
+            savedProduct.getProductId(),
+            command.getReservationId(),
+            releasedQuantity,
+            savedProduct.getAvailableQuantity()
+        );
     }
     
     /**
@@ -225,6 +248,19 @@ public class RestoreStockService implements RestoreStockUseCase {
         
         log.info("Stock adjusted successfully. Product: {}, New Total: {}", 
             command.getProductId(), command.getNewTotalQuantity());
+    }
+    
+    @Override
+    public BatchReleaseResult batchReleaseReservations(BatchReleaseReservationCommand command) {
+        log.info("Batch releasing reservations for order: {}", command.getOrderId());
+        
+        List<ReleaseResult> results = new ArrayList<>();
+        
+        // 실제로는 orderId로 예약들을 찾는 기능이 필요
+        // 여기서는 기본 구현만 제공
+        log.warn("Batch release reservations needs proper implementation with reservation lookup by orderId");
+        
+        return new BatchReleaseResult(results, command.getOrderId());
     }
     
     /**
