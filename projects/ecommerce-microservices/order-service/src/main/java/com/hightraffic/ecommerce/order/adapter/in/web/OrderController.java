@@ -201,22 +201,46 @@ public class OrderController {
     }
     
     private GetOrderResponse mapToResponse(GetOrderUseCase.OrderResponse response) {
+        List<GetOrderResponse.OrderItemResponse> items = response.getItems().stream()
+            .map(item -> new GetOrderResponse.OrderItemResponse(
+                item.getProductId(),
+                item.getProductName(),
+                null, // productImage
+                item.getQuantity(),
+                new BigDecimal(item.getUnitPrice()),
+                new BigDecimal(item.getTotalPrice()),
+                BigDecimal.ZERO, // discountAmount
+                "CONFIRMED" // status
+            ))
+            .collect(Collectors.toList());
+        
         return new GetOrderResponse(
             response.getOrderId().getValue(),
+            response.getOrderId().getValue(), // orderNumber
             response.getCustomerId().getValue(),
             response.getStatus().name(),
-            response.getItems().stream()
-                .map(item -> new GetOrderResponse.OrderItemResponse(
-                    item.getProductId(),
-                    item.getProductName(),
-                    item.getQuantity(),
-                    item.getUnitPrice(),
-                    item.getTotalPrice()
-                ))
-                .collect(Collectors.toList()),
-            response.getTotalAmount(),
+            response.getStatus().name(), // statusDescription
+            items,
+            new BigDecimal(response.getTotalAmount()),
+            "KRW", // currency
+            new GetOrderResponse.ShippingAddressResponse(
+                "기본 수령인",
+                "010-0000-0000",
+                "12345",
+                "기본 주소",
+                "상세 주소",
+                "배송 메모"
+            ),
+            GetOrderResponse.PaymentResponse.pending("CARD"),
             response.getCreatedAt(),
-            response.getLastModifiedAt()
+            response.getLastModifiedAt(),
+            null, // confirmedAt
+            null, // cancelledAt
+            null, // deliveredAt
+            response.getCreatedAt().plusDays(3), // estimatedDeliveryDate
+            null, // trackingNumber
+            null, // orderNotes
+            response.getCancellationReason()
         );
     }
     
@@ -227,7 +251,7 @@ public class OrderController {
                 item.getProductId(),
                 item.getProductName(),
                 item.getQuantity(),
-                item.getUnitPrice()
+                new BigDecimal(item.getUnitPrice())
             ))
             .collect(Collectors.toList());
         
@@ -275,7 +299,7 @@ public class OrderController {
                 summary.getOrderId().getValue(),
                 summary.getOrderId().getValue(), // orderNumber
                 summary.getStatus().name(),
-                summary.getTotalAmount().getAmount(),
+                new BigDecimal(summary.getTotalAmount()),
                 summary.getItemCount(),
                 "상품", // firstProductName - TODO: 실제 첫 번째 상품명으로 수정
                 summary.getCreatedAt(),

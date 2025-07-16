@@ -53,7 +53,6 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
             .map(mapper::toDomainModel);
     }
     
-    @Override
     public List<Order> loadOrdersByCustomer(CustomerId customerId, int limit) {
         log.debug("고객 주문 목록 조회: customerId={}, limit={}", customerId.getValue(), limit);
         
@@ -222,11 +221,20 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
          */
         private OrderJpaEntity.OrderStatusEntity mapToEntityStatus(OrderStatus domainStatus) {
             return switch (domainStatus) {
+                //TODO: STATUS 등록 후 연결
                 case PENDING -> OrderJpaEntity.OrderStatusEntity.PENDING;
                 case CONFIRMED -> OrderJpaEntity.OrderStatusEntity.CONFIRMED;
+                case PAYMENT_PENDING -> null;
+                case PAYMENT_PROCESSING -> null;
                 case PAID -> OrderJpaEntity.OrderStatusEntity.PAID;
+                case PREPARING -> null;
+                case SHIPPED -> null;
+                case DELIVERED -> null;
                 case COMPLETED -> OrderJpaEntity.OrderStatusEntity.COMPLETED;
                 case CANCELLED -> OrderJpaEntity.OrderStatusEntity.CANCELLED;
+                case REFUNDING -> null;
+                case REFUNDED -> null;
+                case FAILED -> null;
             };
         }
         
