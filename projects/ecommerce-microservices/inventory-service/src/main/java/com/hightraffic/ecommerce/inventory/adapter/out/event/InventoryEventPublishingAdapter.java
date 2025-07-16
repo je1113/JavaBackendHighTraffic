@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -57,6 +58,31 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
     
     public InventoryEventPublishingAdapter(KafkaEventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
+    }
+    
+    @Override
+    public void publishEvents(List<DomainEvent> events) {
+        for (DomainEvent event : events) {
+            publishEvent(event);
+        }
+    }
+    
+    @Override
+    public void publishEvent(DomainEvent event) {
+        // 이벤트 타입에 따라 적절한 토픽으로 발행
+        if (event instanceof StockReservedEvent) {
+            publishStockReservedEvent((StockReservedEvent) event);
+        } else if (event instanceof StockReleasedEvent) {
+            publishStockReleasedEvent((StockReleasedEvent) event);
+        } else if (event instanceof StockDeductedEvent) {
+            publishStockDeductedEvent((StockDeductedEvent) event);
+        } else if (event instanceof StockAdjustedEvent) {
+            publishStockAdjustedEvent((StockAdjustedEvent) event);
+        } else if (event instanceof LowStockAlertEvent) {
+            publishLowStockAlertEvent((LowStockAlertEvent) event);
+        } else {
+            log.warn("알 수 없는 이벤트 타입: {}", event.getClass().getSimpleName());
+        }
     }
     
     @Override
@@ -196,28 +222,9 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
      * 이벤트 메타데이터 보강
      */
     private void enrichEvent(DomainEvent event) {
-        // 이벤트 ID가 없으면 생성
-        if (event.getEventId() == null) {
-            event.setEventId(UUID.randomUUID().toString());
-        }
-        
-        // 타임스탬프가 없으면 현재 시간
-        if (event.getTimestamp() == null) {
-            event.setTimestamp(Instant.now());
-        }
-        
-        // 서비스 정보 추가
-        event.setSourceService(serviceName);
-        
-        // Aggregate 타입 설정
-        if (event.getAggregateType() == null) {
-            event.setAggregateType("Product");
-        }
-        
-        // 버전 설정
-        if (event.getVersion() == 0) {
-            event.setVersion(1);
-        }
+        // DomainEvent는 불변 객체이므로 별도 설정 없이 사용
+        log.debug("이벤트 메타데이터: eventId={}, eventType={}, aggregateId={}", 
+            event.getEventId(), event.getEventType(), event.getAggregateId());
     }
     
     /**
@@ -230,7 +237,7 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
         
         public InsufficientStockEvent(String eventId, Instant timestamp, String productId,
                                     String orderId, Integer requestedQuantity, Integer availableQuantity) {
-            super(eventId, "InsufficientStock", timestamp, 1, productId, "Product");
+            super(eventId, "InsufficientStock", timestamp, 1, productId);
             this.orderId = orderId;
             this.requestedQuantity = requestedQuantity;
             this.availableQuantity = availableQuantity;
@@ -259,7 +266,7 @@ public class InventoryEventPublishingAdapter implements PublishEventPort {
         
         public InventorySnapshotEvent(int productCount, long totalValue) {
             super(UUID.randomUUID().toString(), "InventorySnapshot", 
-                  Instant.now(), 1, "SYSTEM", "Inventory");
+                  Instant.now(), 1, "SYSTEM");
             this.productCount = productCount;
             this.totalValue = totalValue;
             this.snapshotTime = Instant.now();

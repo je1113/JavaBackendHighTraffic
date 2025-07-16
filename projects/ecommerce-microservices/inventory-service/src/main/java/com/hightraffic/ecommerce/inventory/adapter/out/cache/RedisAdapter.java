@@ -43,11 +43,11 @@ public class RedisAdapter implements CachePort {
     @Override
     public void cacheProduct(Product product, Duration ttl) {
         try {
-            String key = buildProductKey(product.getId());
+            String key = buildProductKey(product.getProductId());
             redisTemplate.opsForValue().set(key, product, ttl);
-            logger.debug("Cached product: {}", product.getId());
+            logger.debug("Cached product: {}", product.getProductId());
         } catch (Exception e) {
-            logger.error("Failed to cache product: {}", product.getId(), e);
+            logger.error("Failed to cache product: {}", product.getProductId(), e);
         }
     }
     
@@ -56,7 +56,7 @@ public class RedisAdapter implements CachePort {
         try {
             Map<String, Object> productMap = products.stream()
                 .collect(Collectors.toMap(
-                    product -> buildProductKey(product.getId()),
+                    product -> buildProductKey(product.getProductId()),
                     product -> product
                 ));
             
@@ -220,7 +220,7 @@ public class RedisAdapter implements CachePort {
             if (hotItemValues != null) {
                 return hotItemValues.stream()
                     .map(Object::toString)
-                    .map(ProductId::new)
+                    .map(ProductId::of)
                     .collect(Collectors.toSet());
             }
             

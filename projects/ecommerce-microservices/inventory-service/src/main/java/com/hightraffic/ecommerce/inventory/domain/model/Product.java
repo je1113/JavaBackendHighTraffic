@@ -75,13 +75,26 @@ public class Product {
             updateModificationTime();
             
             // 도메인 이벤트 발행
+            List<StockReservedEvent.ReservedItem> reservedItems = List.of(
+                new StockReservedEvent.ReservedItem(
+                    productId.getValue().toString(),
+                    productName,
+                    quantity.getValue(),
+                    "MAIN_WAREHOUSE", // warehouseId
+                    "AVAILABLE", // reservedFrom
+                    0.0  // unitPrice
+                )
+            );
+            
             addDomainEvent(new StockReservedEvent(
                 productId.getValue().toString(),
-                orderId,
                 reservation.getReservationId().getValue().toString(),
-                quantity.getValue(),
-                stock.getAvailableQuantity().getValue(),
-                LocalDateTime.now()
+                orderId,
+                "", // customerId - 기본값
+                reservedItems,
+                java.time.Instant.now().plusSeconds(900), // 15분 후 만료
+                "IMMEDIATE",
+                1 // priority
             ));
             
             // 낮은 재고 알림 확인
@@ -115,14 +128,30 @@ public class Product {
         stock.releaseReservation(reservationId);
         updateModificationTime();
         
-        // 도메인 이벤트 발행
+        // 도메인 이벤트 발행  
+        List<StockReleasedEvent.ReleasedItem> releasedItems = List.of(
+            new StockReleasedEvent.ReleasedItem(
+                productId.getValue().toString(),
+                productName,
+                releasedQuantity.getValue(),
+                "MAIN_WAREHOUSE", // warehouseId
+                "ORDER_CANCELLED", // releaseReason
+                stock.getAvailableQuantity().getValue(), // availableAfterRelease
+                "Release reason: Order cancelled" // notes
+            )
+        );
+        
         addDomainEvent(new StockReleasedEvent(
             productId.getValue().toString(),
-            orderId,
             reservationId.getValue().toString(),
-            releasedQuantity.getValue(),
-            stock.getAvailableQuantity().getValue(),
-            LocalDateTime.now()
+            orderId,
+            "", // customerId - 기본값
+            "ORDER_CANCELLED",
+            releasedItems,
+            "Order cancellation",
+            "SYSTEM",
+            true, // isFullyReleased
+            java.time.Instant.now()
         ));
     }
     
@@ -184,12 +213,36 @@ public class Product {
         updateModificationTime();
         
         // 도메인 이벤트 발행
+        List<StockAdjustedEvent.AdjustedItem> adjustedItems = List.of(
+            new StockAdjustedEvent.AdjustedItem(
+                productId.getValue().toString(),
+                productName,
+                "MAIN_WAREHOUSE", // warehouseId
+                "KG", // unit
+                previousTotal.getValue(),
+                stock.getTotalQuantity().getValue(),
+                stock.getTotalQuantity().getValue() - previousTotal.getValue(),
+                "STOCK_ADDITION",
+                java.time.Instant.now(),
+                0.0, // costPerUnit
+                0.0  // totalCost
+            )
+        );
+        
         addDomainEvent(new StockAdjustedEvent(
             productId.getValue().toString(),
-            previousTotal.getValue(),
-            stock.getTotalQuantity().getValue(),
+            "", // adjustmentId - 기본값
+            "INBOUND",
             reason,
-            LocalDateTime.now()
+            "", // referenceNumber
+            adjustedItems,
+            "", // adjustedBy
+            "", // approvedBy
+            "", // locationCode
+            "", // batchNumber
+            "", // supplierReference
+            true, // isSystemGenerated
+            "" // notes
         ));
     }
     
@@ -208,12 +261,36 @@ public class Product {
         updateModificationTime();
         
         // 도메인 이벤트 발행
+        List<StockAdjustedEvent.AdjustedItem> adjustedItems = List.of(
+            new StockAdjustedEvent.AdjustedItem(
+                productId.getValue().toString(),
+                productName,
+                "MAIN_WAREHOUSE", // warehouseId
+                "KG", // unit
+                previousTotal.getValue(),
+                stock.getTotalQuantity().getValue(),
+                stock.getTotalQuantity().getValue() - previousTotal.getValue(),
+                "STOCK_ADJUSTMENT",
+                java.time.Instant.now(),
+                0.0, // costPerUnit
+                0.0  // totalCost
+            )
+        );
+        
         addDomainEvent(new StockAdjustedEvent(
             productId.getValue().toString(),
-            previousTotal.getValue(),
-            stock.getTotalQuantity().getValue(),
+            "", // adjustmentId - 기본값
+            "ADJUSTMENT",
             reason,
-            LocalDateTime.now()
+            "", // referenceNumber
+            adjustedItems,
+            "", // adjustedBy
+            "", // approvedBy
+            "", // locationCode
+            "", // batchNumber
+            "", // supplierReference
+            true, // isSystemGenerated
+            "" // notes
         ));
         
         // 낮은 재고 알림 확인
@@ -256,6 +333,27 @@ public class Product {
         
         // 현재 재고가 새로운 임계값보다 낮으면 알림
         checkLowStockAlert();
+    }
+    
+    /**
+     * 낮은 재고 임계값 업데이트 (Persistence Adapter 호환용)
+     */
+    public void updateLowStockThreshold(StockQuantity threshold) {
+        setLowStockThreshold(threshold);
+    }
+    
+    /**
+     * 버전 설정 (Persistence Adapter 호환용)
+     */
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+    
+    /**
+     * ID getter (Persistence Adapter 호환용)
+     */
+    public ProductId getId() {
+        return productId;
     }
     
     /**
@@ -332,12 +430,31 @@ public class Product {
     
     private void checkLowStockAlert() {
         if (isLowStock()) {
+            List<LowStockAlertEvent.LowStockItem> lowStockItems = List.of(
+                new LowStockAlertEvent.LowStockItem(
+                    productId.getValue().toString(),
+                    productName,
+                    stock.getAvailableQuantity().getValue(),
+                    lowStockThreshold.getValue(),
+                    "MAIN_WAREHOUSE",
+                    0.0, // estimatedValue
+                    "KG" // unit
+                )
+            );
+            
             addDomainEvent(new LowStockAlertEvent(
-                productId.getValue().toString(),
-                productName,
-                stock.getAvailableQuantity().getValue(),
-                lowStockThreshold.getValue(),
-                LocalDateTime.now()
+                productId.getValue().toString(), // inventoryId
+                "LOW_STOCK_ALERT", // alertId
+                "WAREHOUSE", // alertType
+                "LOW_STOCK", // severity
+                lowStockItems,
+                1, // priority
+                0.0, // totalEstimatedValue
+                List.of("INVENTORY_MANAGER"), // notifyRoles
+                false, // isUrgent
+                List.of("EMAIL", "SMS"), // notificationChannels
+                java.time.Instant.now(), // alertTime
+                "Low stock threshold reached" // description
             ));
         }
     }

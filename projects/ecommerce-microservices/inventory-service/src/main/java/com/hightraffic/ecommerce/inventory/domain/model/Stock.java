@@ -289,6 +289,38 @@ public class Stock {
         return reservations.size();
     }
     
+    /**
+     * 사용 가능 수량 조정 (Persistence Adapter 호환용)
+     */
+    public void adjustAvailableQuantity(StockQuantity newAvailableQuantity) {
+        Objects.requireNonNull(newAvailableQuantity, "New available quantity cannot be null");
+        
+        // 새로운 총 재고 = 새로운 가용 재고 + 예약된 재고
+        StockQuantity newTotalQuantity = newAvailableQuantity.add(this.reservedQuantity);
+        
+        this.availableQuantity = newAvailableQuantity;
+        this.totalQuantity = newTotalQuantity;
+        
+        updateModificationTime();
+        validateStockConsistency();
+    }
+    
+    /**
+     * 예약된 수량 조정 (Persistence Adapter 호환용)
+     */
+    public void adjustReservedQuantity(StockQuantity newReservedQuantity) {
+        Objects.requireNonNull(newReservedQuantity, "New reserved quantity cannot be null");
+        
+        // 새로운 총 재고 = 가용 재고 + 새로운 예약된 재고
+        StockQuantity newTotalQuantity = this.availableQuantity.add(newReservedQuantity);
+        
+        this.reservedQuantity = newReservedQuantity;
+        this.totalQuantity = newTotalQuantity;
+        
+        updateModificationTime();
+        validateStockConsistency();
+    }
+    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

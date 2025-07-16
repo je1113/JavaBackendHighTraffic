@@ -32,7 +32,7 @@ public interface ReserveStockUseCase {
      * @throws InsufficientStockException 재고가 부족한 경우
      * @throws InactiveProductException 비활성 상품인 경우
      */
-    ReservationId reserveStock(@Valid ReserveStockCommand command);
+    ReservationResult reserveStock(@Valid ReserveStockCommand command);
     
     /**
      * 다수 상품 재고 일괄 예약
@@ -41,6 +41,11 @@ public interface ReserveStockUseCase {
      * @return 예약 결과 목록
      */
     List<ReservationResult> reserveBatchStock(@Valid ReserveBatchStockCommand command);
+    
+    /**
+     * 배치 재고 예약 (Controller 호환용)
+     */
+    BatchReservationResult reserveStockBatch(@Valid BatchReserveStockCommand command);
     
     /**
      * 재고 예약 명령
@@ -80,6 +85,25 @@ public interface ReserveStockUseCase {
         
         public Integer getReservationMinutes() {
             return reservationMinutes;
+        }
+        
+        /**
+         * 예약 아이템 (Controller 호환용)
+         */
+        public static class ReservationItem {
+            @NotNull(message = "Product ID is required")
+            private final ProductId productId;
+            
+            @NotNull(message = "Quantity is required")
+            private final StockQuantity quantity;
+            
+            public ReservationItem(ProductId productId, StockQuantity quantity) {
+                this.productId = productId;
+                this.quantity = quantity;
+            }
+            
+            public ProductId getProductId() { return productId; }
+            public StockQuantity getQuantity() { return quantity; }
         }
     }
     
@@ -142,6 +166,32 @@ public interface ReserveStockUseCase {
     }
     
     /**
+     * 배치 재고 예약 명령 (Controller 호환용)
+     */
+    class BatchReserveStockCommand {
+        
+        @NotNull(message = "Reservation items are required")
+        private final List<ReserveStockCommand.ReservationItem> items;
+        
+        @NotBlank(message = "Reservation ID is required")
+        private final String reservationId;
+        
+        private final java.time.Duration timeout;
+        
+        public BatchReserveStockCommand(String reservationId, 
+                                      List<ReserveStockCommand.ReservationItem> items,
+                                      java.time.Duration timeout) {
+            this.reservationId = reservationId;
+            this.items = List.copyOf(items);
+            this.timeout = timeout;
+        }
+        
+        public String getReservationId() { return reservationId; }
+        public List<ReserveStockCommand.ReservationItem> getItems() { return items; }
+        public java.time.Duration getTimeout() { return timeout; }
+    }
+    
+    /**
      * 예약 결과
      */
     class ReservationResult {
@@ -149,13 +199,21 @@ public interface ReserveStockUseCase {
         private final boolean success;
         private final ReservationId reservationId;
         private final String failureReason;
+        private final StockQuantity reservedQuantity;
+        private final StockQuantity availableQuantity;
+        private final java.time.Instant expiresAt;
         
         // 성공 생성자
-        public ReservationResult(ProductId productId, ReservationId reservationId) {
+        public ReservationResult(ProductId productId, ReservationId reservationId, 
+                               StockQuantity reservedQuantity, StockQuantity availableQuantity,
+                               java.time.Instant expiresAt) {
             this.productId = productId;
             this.success = true;
             this.reservationId = reservationId;
             this.failureReason = null;
+            this.reservedQuantity = reservedQuantity;
+            this.availableQuantity = availableQuantity;
+            this.expiresAt = expiresAt;
         }
         
         // 실패 생성자
@@ -164,6 +222,9 @@ public interface ReserveStockUseCase {
             this.success = false;
             this.reservationId = null;
             this.failureReason = failureReason;
+            this.reservedQuantity = StockQuantity.zero();
+            this.availableQuantity = StockQuantity.zero();
+            this.expiresAt = null;
         }
         
         // Getters
@@ -171,6 +232,13 @@ public interface ReserveStockUseCase {
         public boolean isSuccess() { return success; }
         public ReservationId getReservationId() { return reservationId; }
         public String getFailureReason() { return failureReason; }
+        
+        // Controller compatibility methods
+        public String reservationId() { return reservationId != null ? reservationId.toString() : null; }
+        public String productId() { return productId.toString(); }
+        public StockQuantity reservedQuantity() { return reservedQuantity; }
+        public StockQuantity availableQuantity() { return availableQuantity; }
+        public java.time.Instant expiresAt() { return expiresAt; }
     }
     
     /**
@@ -198,6 +266,12 @@ public interface ReserveStockUseCase {
         public List<ReservationResult> getFailureResults() {
             return results.stream().filter(r -> !r.isSuccess()).toList();
         }
+        
+        // Controller compatibility methods
+        public boolean isFullySuccessful() { return allSuccess; }
+        public List<ReservationResult> successfulReservations() { return getSuccessResults(); }
+        public List<ReservationResult> failedReservations() { return getFailureResults(); }
+        public String reservationId() { return orderId; } // orderId를 reservationId로 사용
     }
     
     /**

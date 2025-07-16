@@ -103,6 +103,22 @@ public class DeductStockService implements DeductStockUseCase {
     }
     
     @Override
+    public void deductStock(DeductStockCommand command) {
+        log.info("Deducting stock for product: {} with quantity: {}", 
+            command.getProductId(), command.getQuantity());
+        
+        // DeductStockCommand를 DeductStockDirectlyCommand로 변환
+        DeductStockDirectlyCommand directCommand = new DeductStockDirectlyCommand(
+            command.getProductId(),
+            command.getQuantity(),
+            "Direct deduction",
+            null
+        );
+        
+        deductStockDirectly(directCommand);
+    }
+    
+    @Override
     public List<DeductionResult> deductBatchReservedStock(DeductBatchReservedStockCommand command) {
         log.info("Deducting batch reserved stock for order: {} with {} items", 
             command.getOrderId(), command.getDeductionItems().size());

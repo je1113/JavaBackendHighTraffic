@@ -42,8 +42,46 @@ public record OrderCancelledEventMessage(
     Instant cancelledAt,
     
     @JsonProperty("cancelledBy")
-    String cancelledBy
+    String cancelledBy,
+    
+    @JsonProperty("cancelReason")
+    String cancelReason,
+    
+    @JsonProperty("cancelReasonCode")
+    String cancelReasonCode,
+    
+    @JsonProperty("cancelledByType")
+    String cancelledByType,
+    
+    @JsonProperty("compensationActions")
+    List<CompensationActionMessage> compensationActions
 ) {
+    
+    /**
+     * 보상 액션 메시지 DTO
+     */
+    public record CompensationActionMessage(
+        @JsonProperty("actionType")
+        String actionType,
+        
+        @JsonProperty("targetService")
+        String targetService,
+        
+        @JsonProperty("actionData")
+        String actionData,
+        
+        @JsonProperty("priority")
+        int priority
+    ) {
+        
+        /**
+         * 유효한 보상 액션인지 검증
+         */
+        public boolean isValid() {
+            return actionType != null && !actionType.isBlank() &&
+                   targetService != null && !targetService.isBlank();
+        }
+    }
     
     /**
      * 취소된 아이템 메시지 DTO

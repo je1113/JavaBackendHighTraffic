@@ -53,6 +53,9 @@ public record OrderCreatedEventMessage(
         @JsonProperty("productId")
         String productId,
         
+        @JsonProperty("productName")
+        String productName,
+        
         @JsonProperty("quantity")
         int quantity,
         

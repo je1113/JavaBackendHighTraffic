@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hightraffic.ecommerce.inventory.adapter.in.messaging.dto.*;
 import com.hightraffic.ecommerce.inventory.application.handler.OrderCancelledEventHandler;
 import com.hightraffic.ecommerce.inventory.application.handler.OrderCreatedEventHandler;
+import com.hightraffic.ecommerce.common.event.order.OrderCreatedEvent;
+import com.hightraffic.ecommerce.common.event.order.OrderCancelledEvent;
+import java.util.List;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -243,16 +246,50 @@ public class InventoryEventListener {
         // TODO: 재고 차감 Use Case 호출
     }
     
-    private Object mapToEvent(OrderCreatedEventMessage message) {
-        // Message DTO → Domain Event 변환
-        // TODO: 실제 도메인 이벤트로 변환
-        return message;
+    private OrderCreatedEvent mapToEvent(OrderCreatedEventMessage message) {
+        // OrderItemData 변환
+        List<OrderCreatedEvent.OrderItemData> orderItems = message.orderItems().stream()
+            .map(item -> new OrderCreatedEvent.OrderItemData(
+                item.productId(),
+                item.productName(),
+                item.quantity(),
+                item.unitPrice(),
+                item.totalPrice()
+            ))
+            .collect(java.util.stream.Collectors.toList());
+            
+        return new OrderCreatedEvent(
+            message.orderId(),
+            message.customerId(),
+            orderItems,
+            message.totalAmount(),
+            message.currency()
+        );
     }
     
-    private Object mapToEvent(OrderCancelledEventMessage message) {
-        // Message DTO → Domain Event 변환
-        // TODO: 실제 도메인 이벤트로 변환
-        return message;
+    private OrderCancelledEvent mapToEvent(OrderCancelledEventMessage message) {
+        // OrderCancelledEvent의 생성자에 맞춰 변환
+        return new OrderCancelledEvent(
+            message.orderId(),
+            message.customerId(),
+            "CONFIRMED", // previousStatus - 기본값
+            message.cancelReason(),
+            message.cancelReasonCode(),
+            message.cancelledBy(),
+            message.cancelledByType(),
+            java.math.BigDecimal.ZERO, // refundAmount - 기본값
+            message.compensationActions() != null ? 
+                message.compensationActions().stream()
+                    .map(action -> new OrderCancelledEvent.CompensationAction(
+                        action.actionType(),
+                        action.targetService(),
+                        action.actionData(),
+                        action.priority()
+                    ))
+                    .collect(java.util.stream.Collectors.toList()) : 
+                java.util.List.of(),
+            message.cancellationReason() // cancellationNotes
+        );
     }
     
     private void handleDeserializationError(String message, String topic, int partition, long offset, Exception e) {

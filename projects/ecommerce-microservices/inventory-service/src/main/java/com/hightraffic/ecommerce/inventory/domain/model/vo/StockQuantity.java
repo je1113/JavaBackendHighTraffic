@@ -41,6 +41,10 @@ public class StockQuantity {
         return value;
     }
     
+    public int intValue() {
+        return value;
+    }
+    
     /**
      * 재고 수량 추가
      */

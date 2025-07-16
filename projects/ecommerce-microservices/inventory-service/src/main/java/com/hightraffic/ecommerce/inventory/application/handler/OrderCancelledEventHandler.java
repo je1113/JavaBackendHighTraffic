@@ -76,7 +76,7 @@ public class OrderCancelledEventHandler {
                     // 예약 해제 명령 생성
                     RestoreStockUseCase.ReleaseReservationCommand command = 
                         new RestoreStockUseCase.ReleaseReservationCommand(
-                            restoreInfo.productId,
+                            com.hightraffic.ecommerce.inventory.domain.model.vo.ProductId.of(restoreInfo.productId),
                             restoreInfo.reservationId
                         );
                     

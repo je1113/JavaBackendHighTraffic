@@ -15,6 +15,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -59,8 +67,8 @@ public class InventoryController {
         
         // UseCase 실행
         GetStockUseCase.GetStockQuery query = 
-            new GetStockUseCase.GetStockQuery(productId);
-        GetStockUseCase.StockInfo result = getStockUseCase.getStock(query);
+            new GetStockUseCase.GetStockQuery(ProductId.of(productId), true);
+        GetStockUseCase.StockResponse result = getStockUseCase.getStock(query);
         
         // Result → Response DTO 변환
         GetStockResponse response = mapToResponse(result);
@@ -82,9 +90,12 @@ public class InventoryController {
         log.debug("배치 재고 조회 요청: productIds={}", query.productIds().size());
         
         // UseCase 실행
-        GetStockUseCase.BatchGetStockQuery useCaseQuery = 
-            new GetStockUseCase.BatchGetStockQuery(query.productIds());
-        List<GetStockUseCase.StockInfo> results = getStockUseCase.getBatchStock(useCaseQuery);
+        List<ProductId> productIdList = query.productIds().stream()
+            .map(ProductId::of)
+            .collect(Collectors.toList());
+        GetStockUseCase.GetBatchStockQuery useCaseQuery = 
+            new GetStockUseCase.GetBatchStockQuery(productIdList, false);
+        List<GetStockUseCase.StockResponse> results = getStockUseCase.getBatchStock(useCaseQuery);
         
         // Results → Response DTO 변환
         GetStockResponse.BatchGetStockResponse response = mapToBatchResponse(results);
@@ -113,7 +124,7 @@ public class InventoryController {
         // Request DTO → UseCase Command 변환
         ReserveStockUseCase.ReserveStockCommand command = 
             new ReserveStockUseCase.ReserveStockCommand(
-                productId,
+                ProductId.of(productId),
                 request.quantity(),
                 request.reservationId(),
                 Duration.ofMinutes(request.timeoutMinutes() != null ? request.timeoutMinutes() : 30)
@@ -155,7 +166,7 @@ public class InventoryController {
         List<ReserveStockUseCase.ReserveStockCommand.ReservationItem> items = 
             request.items().stream()
                 .map(item -> new ReserveStockUseCase.ReserveStockCommand.ReservationItem(
-                    item.productId(),
+                    ProductId.of(item.productId()),
                     item.quantity()
                 ))
                 .collect(Collectors.toList());
@@ -202,7 +213,7 @@ public class InventoryController {
         
         // UseCase 실행
         DeductStockUseCase.DeductReservedStockCommand command = 
-            new DeductStockUseCase.DeductReservedStockCommand(productId, reservationId);
+            new DeductStockUseCase.DeductReservedStockCommand(ProductId.of(productId), reservationId);
         deductStockUseCase.deductReservedStock(command);
         
         log.info("재고 차감 성공: reservationId={}", reservationId);
@@ -230,7 +241,7 @@ public class InventoryController {
         
         // UseCase 실행
         RestoreStockUseCase.ReleaseReservationCommand command = 
-            new RestoreStockUseCase.ReleaseReservationCommand(productId, reservationId);
+            new RestoreStockUseCase.ReleaseReservationCommand(ProductId.of(productId), reservationId);
         restoreStockUseCase.releaseReservation(command);
         
         log.info("예약 해제 성공: reservationId={}", reservationId);
@@ -261,7 +272,7 @@ public class InventoryController {
             case "ADD" -> {
                 RestoreStockUseCase.AddStockCommand command = 
                     new RestoreStockUseCase.AddStockCommand(
-                        productId,
+                        ProductId.of(productId),
                         request.quantity(),
                         request.reason(),
                         request.reasonCode()
@@ -271,7 +282,7 @@ public class InventoryController {
             case "SUBTRACT" -> {
                 DeductStockUseCase.DeductStockCommand command = 
                     new DeductStockUseCase.DeductStockCommand(
-                        productId,
+                        ProductId.of(productId),
                         request.quantity()
                     );
                 deductStockUseCase.deductStock(command);
@@ -279,7 +290,7 @@ public class InventoryController {
             case "SET" -> {
                 RestoreStockUseCase.AdjustStockCommand command = 
                     new RestoreStockUseCase.AdjustStockCommand(
-                        productId,
+                        ProductId.of(productId),
                         request.quantity(),
                         request.reason(),
                         request.reasonCode()
@@ -308,13 +319,13 @@ public class InventoryController {
         log.debug("낮은 재고 상품 조회: threshold={}", threshold);
         
         // UseCase 실행
-        GetStockUseCase.GetLowStockProductsQuery query = 
-            new GetStockUseCase.GetLowStockProductsQuery(threshold);
-        List<GetStockUseCase.StockInfo> results = getStockUseCase.getLowStockProducts(query);
+        GetStockUseCase.GetLowStockQuery query = 
+            new GetStockUseCase.GetLowStockQuery(StockQuantity.of(threshold), false, 100);
+        List<GetStockUseCase.LowStockResponse> results = getStockUseCase.getLowStockProducts(query);
         
         // Results → Response DTOs 변환
         List<GetStockResponse> responses = results.stream()
-            .map(this::mapToResponse)
+            .map(this::mapLowStockToResponse)
             .collect(Collectors.toList());
         
         return ResponseEntity.ok(responses);
@@ -322,44 +333,53 @@ public class InventoryController {
     
     // === Private Mapping Methods ===
     
-    private GetStockResponse mapToResponse(GetStockUseCase.StockInfo info) {
-        // 예약 정보 변환
+    private GetStockResponse mapToResponse(GetStockUseCase.StockResponse info) {
+        // 예약 정보 변환 (비어있는 리스트로 처리 - 예약 정보는 따로 조회 해야 함)
         List<GetStockResponse.ReservationInfo> reservations = 
-            info.activeReservations().stream()
-                .map(res -> new GetStockResponse.ReservationInfo(
-                    res.reservationId(),
-                    res.orderId(),
-                    res.quantity(),
-                    res.reservedAt(),
-                    res.expiresAt(),
-                    res.status()
-                ))
-                .collect(Collectors.toList());
+            List.of(); // 빈 리스트
         
         return new GetStockResponse(
-            info.productId(),
-            info.productName(),
-            info.totalStock(),
-            info.availableStock(),
-            info.reservedStock(),
-            info.lowStockThreshold(),
+            info.getProductId().toString(),
+            info.getProductName(),
+            info.getTotalQuantity().getValue(),
+            info.getAvailableQuantity().getValue(),
+            info.getReservedQuantity().getValue(),
+            info.getLowStockThreshold().getValue(),
             info.isLowStock(),
             info.isOutOfStock(),
             reservations,
-            info.lastUpdated()
+            info.getLastModifiedAt()
+        );
+    }
+    
+    private GetStockResponse mapLowStockToResponse(GetStockUseCase.LowStockResponse lowStockInfo) {
+        // 낮은 재고 응답을 일반 재고 응답으로 변환
+        List<GetStockResponse.ReservationInfo> reservations = List.of();
+        
+        return new GetStockResponse(
+            lowStockInfo.getProductId().toString(),
+            lowStockInfo.getProductName(),
+            lowStockInfo.getAvailableQuantity().getValue(), // total은 available과 같다고 가정
+            lowStockInfo.getAvailableQuantity().getValue(),
+            0, // reserved quantity 정보가 없으므로 0으로 처리
+            lowStockInfo.getLowStockThreshold().getValue(),
+            true, // 낮은 재고 상품이므로 true
+            lowStockInfo.getAvailableQuantity().isZero(),
+            reservations,
+            java.time.LocalDateTime.now() // 현재 시간으로 설정
         );
     }
     
     private GetStockResponse.BatchGetStockResponse mapToBatchResponse(
-            List<GetStockUseCase.StockInfo> results) {
+            List<GetStockUseCase.StockResponse> results) {
         
         List<GetStockResponse.BatchGetStockResponse.ProductStock> products = 
             results.stream()
                 .map(info -> GetStockResponse.BatchGetStockResponse.ProductStock.of(
-                    info.productId(),
-                    info.productName(),
-                    info.availableStock(),
-                    info.reservedStock()
+                    info.getProductId().toString(),
+                    info.getProductName(),
+                    info.getAvailableQuantity().getValue(),
+                    info.getReservedQuantity().getValue()
                 ))
                 .collect(Collectors.toList());
         

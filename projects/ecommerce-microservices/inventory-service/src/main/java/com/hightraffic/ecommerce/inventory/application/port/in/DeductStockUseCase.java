@@ -41,6 +41,11 @@ public interface DeductStockUseCase {
     void deductStockDirectly(@Valid DeductStockDirectlyCommand command);
     
     /**
+     * 재고 차감 (Controller 호환용)
+     */
+    void deductStock(@Valid DeductStockCommand command);
+    
+    /**
      * 다수 예약 일괄 차감
      * 
      * @param command 일괄 차감 명령
@@ -66,6 +71,13 @@ public interface DeductStockUseCase {
             this.reservationId = reservationId;
             this.orderId = orderId;
             this.deductionReason = deductionReason;
+        }
+        
+        // Controller 호환용 생성자 (ProductId, reservationId)
+        public DeductReservedStockCommand(ProductId productId, String reservationId) {
+            this.reservationId = ReservationId.of(reservationId);
+            this.orderId = null;
+            this.deductionReason = "Payment confirmed";
         }
         
         public ReservationId getReservationId() {
@@ -120,6 +132,26 @@ public interface DeductStockUseCase {
         public String getReferenceId() {
             return referenceId;
         }
+    }
+    
+    /**
+     * 재고 차감 명령 (Controller 호환용)
+     */
+    class DeductStockCommand {
+        
+        @NotNull(message = "Product ID is required")
+        private final ProductId productId;
+        
+        @NotNull(message = "Quantity is required")
+        private final StockQuantity quantity;
+        
+        public DeductStockCommand(ProductId productId, StockQuantity quantity) {
+            this.productId = productId;
+            this.quantity = quantity;
+        }
+        
+        public ProductId getProductId() { return productId; }
+        public StockQuantity getQuantity() { return quantity; }
     }
     
     /**

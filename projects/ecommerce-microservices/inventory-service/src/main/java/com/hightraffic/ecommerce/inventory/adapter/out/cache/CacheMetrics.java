@@ -24,25 +24,25 @@ public class CacheMetrics implements InfoContributor {
     }
     
     private void registerMetrics() {
-        Gauge.builder("cache.hit.count")
+        Gauge.builder("cache.hit.count", this, metrics -> metrics.cachePort.getStats().hitCount())
             .description("Number of cache hits")
-            .register(meterRegistry, this, metrics -> metrics.cachePort.getStats().hitCount());
+            .register(meterRegistry);
         
-        Gauge.builder("cache.miss.count")
+        Gauge.builder("cache.miss.count", this, metrics -> metrics.cachePort.getStats().missCount())
             .description("Number of cache misses")
-            .register(meterRegistry, this, metrics -> metrics.cachePort.getStats().missCount());
+            .register(meterRegistry);
         
-        Gauge.builder("cache.eviction.count")
+        Gauge.builder("cache.eviction.count", this, metrics -> metrics.cachePort.getStats().evictionCount())
             .description("Number of cache evictions")
-            .register(meterRegistry, this, metrics -> metrics.cachePort.getStats().evictionCount());
+            .register(meterRegistry);
         
-        Gauge.builder("cache.hit.rate")
+        Gauge.builder("cache.hit.rate", this, metrics -> metrics.cachePort.getStats().hitRate())
             .description("Cache hit rate")
-            .register(meterRegistry, this, metrics -> metrics.cachePort.getStats().hitRate());
+            .register(meterRegistry);
         
-        Gauge.builder("cache.size")
+        Gauge.builder("cache.size", this, metrics -> metrics.cachePort.getStats().size())
             .description("Current cache size")
-            .register(meterRegistry, this, metrics -> metrics.cachePort.getStats().size());
+            .register(meterRegistry);
     }
     
     @Override

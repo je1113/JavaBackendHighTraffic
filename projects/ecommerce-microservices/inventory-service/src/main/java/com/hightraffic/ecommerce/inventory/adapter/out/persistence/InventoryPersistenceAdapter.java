@@ -51,11 +51,30 @@ public class InventoryPersistenceAdapter implements
     }
     
     @Override
+    @Transactional
+    public void saveProduct(Product product) {
+        log.debug("상품 저장 시작: productId={}", product.getProductId().getValue());
+        
+        ProductJpaEntity entity = mapper.toJpaEntity(product);
+        ProductJpaEntity savedEntity = productRepository.save(entity);
+        
+        log.info("상품 저장 완료: productId={}, version={}", 
+            savedEntity.getId(), savedEntity.getVersion());
+    }
+    
+    @Override
     public Optional<Product> loadProduct(ProductId productId) {
         log.debug("상품 조회 시작: productId={}", productId.getValue());
         
-        return productRepository.findById(productId.getValue())
+        return productRepository.findById(productId.getValue().toString())
             .map(mapper::toDomainModel);
+    }
+    
+    @Override
+    public boolean existsProduct(ProductId productId) {
+        log.debug("상품 존재 여부 확인: productId={}", productId.getValue());
+        
+        return productRepository.existsById(productId.getValue().toString());
     }
     
     @Override
@@ -63,7 +82,7 @@ public class InventoryPersistenceAdapter implements
     public Optional<Product> loadProductWithLock(ProductId productId) {
         log.debug("상품 조회 시작 (잠금): productId={}", productId.getValue());
         
-        return productRepository.findByIdWithLock(productId.getValue())
+        return productRepository.findByIdWithLock(productId.getValue().toString())
             .map(mapper::toDomainModel);
     }
     
@@ -125,9 +144,9 @@ public class InventoryPersistenceAdapter implements
         log.debug("재고 예약 시작: productId={}, quantity={}, orderId={}", 
             productId.getValue(), quantity, orderId);
         
-        Optional<ProductJpaEntity> productOpt = productRepository.findByIdWithLock(productId.getValue());
+        Optional<ProductJpaEntity> productOpt = productRepository.findByIdWithLock(productId.getValue().toString());
         if (productOpt.isEmpty()) {
-            throw new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId.getValue());
+            throw new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId.getValue().toString());
         }
         
         ProductJpaEntity product = productOpt.get();
@@ -170,7 +189,7 @@ public class InventoryPersistenceAdapter implements
         log.debug("재고 예약 해제 시작: productId={}, quantity={}, orderId={}", 
             productId.getValue(), quantity, orderId);
         
-        ProductJpaEntity product = productRepository.findByIdWithLock(productId.getValue())
+        ProductJpaEntity product = productRepository.findByIdWithLock(productId.getValue().toString())
             .orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId.getValue()));
         
         // 주문에 대한 예약 찾기
@@ -206,7 +225,7 @@ public class InventoryPersistenceAdapter implements
         log.debug("재고 차감 시작: productId={}, quantity={}, orderId={}", 
             productId.getValue(), quantity, orderId);
         
-        ProductJpaEntity product = productRepository.findByIdWithLock(productId.getValue())
+        ProductJpaEntity product = productRepository.findByIdWithLock(productId.getValue().toString())
             .orElseThrow(() -> new ProductNotFoundException("상품을 찾을 수 없습니다: " + productId.getValue()));
         
         // 예약된 재고에서 차감
@@ -305,7 +324,7 @@ public class InventoryPersistenceAdapter implements
          * JPA 엔티티를 도메인 모델로 변환
          */
         public Product toDomainModel(ProductJpaEntity entity) {
-            ProductId productId = new ProductId(entity.getId());
+            ProductId productId = ProductId.of(entity.getId());
             StockQuantity totalQuantity = StockQuantity.of(entity.getTotalQuantity());
             
             Product product = new Product(productId, entity.getName(), totalQuantity);
@@ -332,7 +351,7 @@ public class InventoryPersistenceAdapter implements
          */
         public ProductJpaEntity toJpaEntity(Product domain) {
             ProductJpaEntity.Builder builder = new ProductJpaEntity.Builder()
-                .id(domain.getProductId().getValue())
+                .id(domain.getProductId().getValue().toString())
                 .name(domain.getProductName())
                 .totalQuantity(domain.getStock().getTotalQuantity().getValue())
                 .availableQuantity(domain.getStock().getAvailableQuantity().getValue())
@@ -343,7 +362,7 @@ public class InventoryPersistenceAdapter implements
                     ProductJpaEntity.ProductStatus.INACTIVE);
             
             // SKU와 카테고리는 기존 엔티티에서 가져오거나 기본값 설정
-            builder.sku(domain.getProductId().getValue())
+            builder.sku(domain.getProductId().getValue().toString())
                    .category("DEFAULT")
                    .price(java.math.BigDecimal.ZERO)
                    .currency("KRW");
