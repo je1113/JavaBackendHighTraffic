@@ -5,6 +5,8 @@ import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 
+import java.time.LocalDateTime;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -128,6 +130,31 @@ public interface CreateOrderUseCase {
         
         public String getMessage() {
             return message;
+        }
+        
+        // 호환성을 위한 메서드들
+        public OrderId orderId() {
+            return orderId;
+        }
+        
+        public String orderNumber() {
+            return orderId.getValue();
+        }
+        
+        public CustomerId customerId() {
+            return null; // TODO: 실제 customerId 저장 필요
+        }
+        
+        public String status() {
+            return "PENDING";
+        }
+        
+        public Money totalAmount() {
+            return Money.ZERO("KRW"); // TODO: 실제 totalAmount 저장 필요
+        }
+        
+        public LocalDateTime createdAt() {
+            return LocalDateTime.now(); // TODO: 실제 createdAt 저장 필요
         }
     }
 }

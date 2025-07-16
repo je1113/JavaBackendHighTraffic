@@ -5,6 +5,9 @@ import com.hightraffic.ecommerce.order.application.port.in.*;
 import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.OrderItem;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
+import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
+import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
+import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,8 +88,8 @@ public class OrderController {
         log.debug("주문 조회 요청: orderId={}", orderId);
         
         // UseCase 실행
-        GetOrderUseCase.GetOrderQuery query = new GetOrderUseCase.GetOrderQuery(orderId);
-        GetOrderUseCase.OrderDetail result = getOrderUseCase.getOrder(query);
+        GetOrderUseCase.GetOrderQuery query = new GetOrderUseCase.GetOrderQuery(OrderId.of(orderId));
+        GetOrderUseCase.OrderResponse result = getOrderUseCase.getOrder(query);
         
         // Result → Response DTO 변환
         GetOrderResponse response = mapToResponse(result);
@@ -108,9 +111,10 @@ public class OrderController {
                 customerId, status, pageable.getPageNumber());
         
         // UseCase 실행
-        GetOrderUseCase.GetCustomerOrdersQuery query = 
-            new GetOrderUseCase.GetCustomerOrdersQuery(customerId, status, pageable);
-        Page<GetOrderUseCase.OrderSummary> result = getOrderUseCase.getCustomerOrders(query);
+        GetOrderUseCase.GetOrdersByCustomerQuery query = 
+            new GetOrderUseCase.GetOrdersByCustomerQuery(CustomerId.of(customerId), status, null, null, 
+                pageable.getPageNumber(), pageable.getPageSize());
+        GetOrderUseCase.OrderListResponse result = getOrderUseCase.getCustomerOrders(query);
         
         // Result → Response DTO 변환
         OrderListResponse response = mapToListResponse(result);
@@ -129,7 +133,7 @@ public class OrderController {
         
         // UseCase 실행
         ConfirmOrderUseCase.ConfirmOrderCommand command = 
-            new ConfirmOrderUseCase.ConfirmOrderCommand(orderId);
+            new ConfirmOrderUseCase.ConfirmOrderCommand(OrderId.of(orderId), "관리자 확정");
         confirmOrderUseCase.confirmOrder(command);
         
         log.info("주문 확정 성공: orderId={}", orderId);
@@ -149,7 +153,7 @@ public class OrderController {
         
         // UseCase 실행
         CancelOrderUseCase.CancelOrderCommand command = new CancelOrderUseCase.CancelOrderCommand(
-            orderId,
+            OrderId.of(orderId),
             request.cancelReason(),
             request.cancelReasonCode()
         );
@@ -164,17 +168,19 @@ public class OrderController {
     
     private CreateOrderUseCase.CreateOrderCommand mapToCommand(CreateOrderRequest request) {
         // 주문 항목 변환
-        List<CreateOrderUseCase.OrderItemCommand> items = request.orderItems().stream()
-            .map(item -> new CreateOrderUseCase.OrderItemCommand(
-                item.productId(),
+        List<CreateOrderUseCase.OrderItem> items = request.orderItems().stream()
+            .map(item -> new CreateOrderUseCase.OrderItem(
+                ProductId.of(item.productId()),
+                item.productName(),
                 item.quantity(),
                 new Money(item.unitPrice(), "KRW")
             ))
             .collect(Collectors.toList());
         
         return new CreateOrderUseCase.CreateOrderCommand(
-            request.customerId(),
-            items
+            CustomerId.of(request.customerId()),
+            items,
+            request.orderNote()
         );
     }
     
@@ -244,7 +250,7 @@ public class OrderController {
     private OrderListResponse mapToListResponse(GetOrderUseCase.OrderListResponse response) {
         List<OrderListResponse.OrderSummary> orders = response.getOrders().stream()
             .map(summary -> OrderListResponse.OrderSummary.create(
-                summary.getOrderId(),
+                summary.getOrderId().getValue(),
                 summary.getOrderId().getValue(), // orderNumber
                 summary.getStatus(),
                 summary.getTotalAmount(),
@@ -253,7 +259,7 @@ public class OrderController {
                 summary.getCreatedAt(),
                 null // deliveredAt
             ))
-            .collect(Collectors.toList());
+            .toList();
         
         return new OrderListResponse(
             orders,

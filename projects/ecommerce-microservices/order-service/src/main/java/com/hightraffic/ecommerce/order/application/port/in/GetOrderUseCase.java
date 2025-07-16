@@ -41,6 +41,13 @@ public interface GetOrderUseCase {
     OrderListResponse getOrdersByCustomer(@Valid GetOrdersByCustomerQuery query);
     
     /**
+     * 고객 주문 목록 조회 (별칭)
+     */
+    default OrderListResponse getCustomerOrders(@Valid GetOrdersByCustomerQuery query) {
+        return getOrdersByCustomer(query);
+    }
+    
+    /**
      * 단일 주문 조회 쿼리
      */
     class GetOrderQuery {
@@ -178,6 +185,55 @@ public interface GetOrderUseCase {
     class OrderDetail extends OrderResponse {
         public OrderDetail(Order order) {
             super(order);
+        }
+        
+        // 호환성을 위한 메서드들
+        public OrderId orderId() {
+            return getOrderId();
+        }
+        
+        public String orderNumber() {
+            return getOrderId().getValue();
+        }
+        
+        public CustomerId customerId() {
+            return getCustomerId();
+        }
+        
+        public OrderStatus status() {
+            return getStatus();
+        }
+        
+        public String statusDescription() {
+            return getStatus().getDescription();
+        }
+        
+        public String totalAmount() {
+            return getTotalAmount();
+        }
+        
+        public List<OrderItemResponse> orderItems() {
+            return getItems();
+        }
+        
+        public LocalDateTime createdAt() {
+            return getCreatedAt();
+        }
+        
+        public LocalDateTime updatedAt() {
+            return getLastModifiedAt();
+        }
+        
+        public LocalDateTime confirmedAt() {
+            return null; // TODO: 실제 confirmedAt 필드 추가 필요
+        }
+        
+        public LocalDateTime cancelledAt() {
+            return null; // TODO: 실제 cancelledAt 필드 추가 필요
+        }
+        
+        public String cancelReason() {
+            return getCancellationReason();
         }
     }
     

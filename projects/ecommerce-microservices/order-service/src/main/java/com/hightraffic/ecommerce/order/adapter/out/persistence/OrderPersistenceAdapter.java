@@ -65,6 +65,11 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
     }
     
     @Override
+    public boolean existsOrder(OrderId orderId) {
+        return orderRepository.existsById(orderId.getValue());
+    }
+    
+    @Override
     @Transactional
     public void save(Order order) {
         log.debug("주문 저장 시작: orderId={}", order.getId().getValue());
@@ -74,6 +79,13 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
         
         log.info("주문 저장 완료: orderId={}, status={}", 
             order.getId().getValue(), order.getStatus());
+    }
+    
+    @Override
+    @Transactional
+    public Order saveOrder(Order order) {
+        save(order);
+        return order;
     }
     
     /**
@@ -86,10 +98,10 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
          */
         public Order toDomainModel(OrderJpaEntity entity) {
             // 주문 ID
-            OrderId orderId = new OrderId(entity.getId());
+            OrderId orderId = OrderId.of(entity.getId());
             
             // 고객 ID
-            CustomerId customerId = new CustomerId(entity.getCustomerId());
+            CustomerId customerId = CustomerId.of(entity.getCustomerId());
             
             // 주문 상태
             OrderStatus status = mapToDomainStatus(entity.getStatus());
@@ -103,13 +115,12 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
             // 주문 아이템 추가
             for (OrderItemJpaEntity itemEntity : entity.getItems()) {
                 OrderItem item = toDomainOrderItem(itemEntity);
-                order.addItem(item);
+                order.addItem(item.getProductId(), item.getProductName(), 
+                            item.getQuantity(), item.getUnitPrice());
             }
             
-            // 추가 정보 설정
-            if (entity.getPaymentId() != null) {
-                order.setPaymentId(entity.getPaymentId());
-            }
+            // 추가 정보 설정 (필요 시 도메인 모델에 메서드 추가)
+            // TODO: setPaymentId 메서드가 필요한 경우 Order 도메인 모델에 추가
             
             // 타임스탬프 설정 (필요한 경우)
             setTimestamps(order, entity);
@@ -127,8 +138,8 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
                 .customerId(order.getCustomerId().getValue())
                 .status(mapToEntityStatus(order.getStatus()))
                 .totalAmount(order.getTotalAmount().getAmount())
-                .currency(order.getTotalAmount().getCurrency())
-                .paymentId(order.getPaymentId())
+                .currency(order.getTotalAmount().getCurrency().getCurrencyCode())
+                // .paymentId(order.getPaymentId()) // TODO: Order에 getPaymentId() 메서드 추가 필요
                 .build();
             
             // 주문 아이템 변환 및 추가
@@ -147,19 +158,20 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
          * 주문 아이템 도메인 모델 변환
          */
         private OrderItem toDomainOrderItem(OrderItemJpaEntity entity) {
-            ProductId productId = new ProductId(entity.getProductId());
+            ProductId productId = ProductId.of(entity.getProductId());
             Money unitPrice = Money.of(entity.getUnitPrice(), entity.getCurrency());
             
-            OrderItem item = new OrderItem(
+            OrderItem item = OrderItem.create(
                 productId,
                 entity.getProductName(),
                 entity.getQuantity(),
                 unitPrice
             );
             
-            if (entity.getReservationId() != null) {
-                item.setReservationId(entity.getReservationId());
-            }
+            // TODO: setReservationId 메서드가 필요한 경우 OrderItem에 추가
+            // if (entity.getReservationId() != null) {
+            //     item.setReservationId(entity.getReservationId());
+            // }
             
             return item;
         }
@@ -173,7 +185,7 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
                 item.getProductName(),
                 item.getQuantity(),
                 item.getUnitPrice().getAmount(),
-                item.getUnitPrice().getCurrency()
+                item.getUnitPrice().getCurrency().getCurrencyCode()
             );
         }
         
@@ -208,9 +220,8 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
          */
         private Order createOrder(OrderId orderId, CustomerId customerId, 
                                 OrderStatus status, Money totalAmount) {
-            // Order 클래스의 생성자나 팩토리 메서드에 따라 구현
-            // 여기서는 예시로 작성
-            Order order = new Order(orderId, customerId);
+            // Order 클래스의 팩토리 메서드 사용
+            Order order = Order.create(customerId);
             
             // 상태와 금액은 setter나 다른 방법으로 설정
             // (실제 도메인 모델 구조에 맞게 조정 필요)

@@ -121,7 +121,7 @@ public class StockValidationAdapter implements StockValidationPort {
                 Map<ProductId, Boolean> results = new HashMap<>();
                 
                 for (BatchStockCheckResponse.StockCheckResult result : responseBody.getResults()) {
-                    ProductId productId = new ProductId(result.getProductId());
+                    ProductId productId = ProductId.of(result.getProductId());
                     results.put(productId, result.isAvailable());
                 }
                 
@@ -202,7 +202,7 @@ public class StockValidationAdapter implements StockValidationPort {
             if (responseBody != null && responseBody.getResults() != null) {
                 List<StockReservationResult> results = responseBody.getResults().stream()
                     .map(result -> {
-                        ProductId productId = new ProductId(result.getProductId());
+                        ProductId productId = ProductId.of(result.getProductId());
                         
                         if (result.isSuccess()) {
                             return new StockReservationResult(productId, result.getReservationId());
@@ -279,7 +279,7 @@ public class StockValidationAdapter implements StockValidationPort {
                     responseBody.getAvailableQuantity(),
                     responseBody.getReservedQuantity(),
                     responseBody.getTotalQuantity(),
-                    new Money(responseBody.getPrice()),
+                    new Money(responseBody.getPrice(), "KRW"),
                     responseBody.isActive(),
                     responseBody.isLowStock()
                 );
@@ -405,21 +405,7 @@ public class StockValidationAdapter implements StockValidationPort {
         }
     }
     
-    private static class StockReservationRequest {
-        private final String productId;
-        private final Integer quantity;
-        private final String orderId;
-        
-        public StockReservationRequest(String productId, Integer quantity, String orderId) {
-            this.productId = productId;
-            this.quantity = quantity;
-            this.orderId = orderId;
-        }
-        
-        public String getProductId() { return productId; }
-        public Integer getQuantity() { return quantity; }
-        public String getOrderId() { return orderId; }
-    }
+    // 로컬 StockReservationRequest 클래스 제거 - 포트의 클래스 사용
     
     private static class StockReservationResponse {
         private boolean success;

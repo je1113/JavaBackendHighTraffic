@@ -193,7 +193,7 @@ public class PaymentAdapter implements PaymentProcessingPort {
                 return new RefundResult(
                     responseBody.getRefundId(),
                     true,
-                    new Money(responseBody.getRefundedAmount()),
+                    new Money(responseBody.getRefundedAmount(), "KRW"),
                     null
                 );
             } else {
