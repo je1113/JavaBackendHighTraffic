@@ -177,4 +177,36 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, String
     @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END " +
            "FROM OrderJpaEntity o WHERE o.id = :id")
     boolean existsByIdOptimized(@Param("id") String id);
+    
+    /**
+     * 고객 ID, 상태, 기간으로 주문 조회 (페이징)
+     */
+    @Query("SELECT o FROM OrderJpaEntity o " +
+           "WHERE o.customerId = :customerId " +
+           "AND (:status IS NULL OR o.status = :status) " +
+           "AND (:fromDate IS NULL OR o.createdAt >= :fromDate) " +
+           "AND (:toDate IS NULL OR o.createdAt <= :toDate) " +
+           "ORDER BY o.createdAt DESC")
+    Page<OrderJpaEntity> findByCustomerIdAndStatusAndCreatedAtBetween(
+        @Param("customerId") String customerId,
+        @Param("status") String status,
+        @Param("fromDate") java.time.LocalDateTime fromDate,
+        @Param("toDate") java.time.LocalDateTime toDate,
+        Pageable pageable
+    );
+    
+    /**
+     * 고객 ID와 기간으로 주문 조회 (페이징)
+     */
+    @Query("SELECT o FROM OrderJpaEntity o " +
+           "WHERE o.customerId = :customerId " +
+           "AND (:fromDate IS NULL OR o.createdAt >= :fromDate) " +
+           "AND (:toDate IS NULL OR o.createdAt <= :toDate) " +
+           "ORDER BY o.createdAt DESC")
+    Page<OrderJpaEntity> findByCustomerIdAndCreatedAtBetween(
+        @Param("customerId") String customerId,
+        @Param("fromDate") java.time.LocalDateTime fromDate,
+        @Param("toDate") java.time.LocalDateTime toDate,
+        Pageable pageable
+    );
 }

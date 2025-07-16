@@ -12,12 +12,15 @@ import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -65,28 +68,53 @@ public class OrderPersistenceAdapter implements LoadOrderPort, LoadOrdersByCusto
     }
     
     @Override
+    public Page<Order> loadOrdersByCustomer(CustomerId customerId, OrderStatus statusFilter, 
+            LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
+        log.debug("고객 주문 목록 조회 (페이징): customerId={}, status={}, from={}, to={}", 
+                customerId.getValue(), statusFilter, fromDate, toDate);
+        
+        // 상태 필터가 있는 경우와 없는 경우 분리
+        Page<OrderJpaEntity> entities;
+        if (statusFilter != null) {
+            entities = orderRepository.findByCustomerIdAndStatusAndCreatedAtBetween(
+                customerId.getValue(),
+                statusFilter.name(),
+                fromDate,
+                toDate,
+                pageable
+            );
+        } else {
+            entities = orderRepository.findByCustomerIdAndCreatedAtBetween(
+                customerId.getValue(),
+                fromDate,
+                toDate,
+                pageable
+            );
+        }
+        
+        return entities.map(mapper::toDomainModel);
+    }
+    
+    @Override
     public boolean existsOrder(OrderId orderId) {
         return orderRepository.existsById(orderId.getValue());
     }
     
     @Override
     @Transactional
-    public void save(Order order) {
-        log.debug("주문 저장 시작: orderId={}", order.getId().getValue());
+    public Order saveOrder(Order order) {
+        log.debug("주문 저장 시작: orderId={}", order.getOrderId().getValue());
         
         OrderJpaEntity entity = mapper.toJpaEntity(order);
-        orderRepository.save(entity);
+        OrderJpaEntity savedEntity = orderRepository.save(entity);
+        Order savedOrder = mapper.toDomainModel(savedEntity);
         
         log.info("주문 저장 완료: orderId={}, status={}", 
-            order.getId().getValue(), order.getStatus());
+            savedOrder.getOrderId().getValue(), savedOrder.getStatus());
+        
+        return savedOrder;
     }
     
-    @Override
-    @Transactional
-    public Order saveOrder(Order order) {
-        save(order);
-        return order;
-    }
     
     /**
      * 주문 도메인 모델과 JPA 엔티티 간 변환을 담당하는 매퍼

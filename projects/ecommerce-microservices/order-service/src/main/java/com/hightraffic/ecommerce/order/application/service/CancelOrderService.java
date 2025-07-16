@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -124,16 +125,19 @@ public class CancelOrderService implements CancelOrderUseCase {
         return new OrderCancelledEvent(
             order.getOrderId().getValue().toString(),
             order.getCustomerId().getValue().toString(),
-            order.getItems().stream()
-                .map(item -> new OrderCancelledEvent.OrderItem(
-                    item.getProductId().getValue().toString(),
-                    item.getProductName(),
-                    item.getQuantity()
-                ))
-                .collect(Collectors.toList()),
+            order.getStatus().name(), // previousStatus
             cancellationReason,
-            isCustomerInitiated,
-            LocalDateTime.now()
+            "STANDARD_CANCELLATION", // cancelReasonCode
+            isCustomerInitiated ? order.getCustomerId().getValue().toString() : "SYSTEM", // cancelledBy
+            isCustomerInitiated ? "CUSTOMER" : "SYSTEM", // cancelledByType
+            order.getTotalAmount().getAmount(), // refundAmount
+            List.of(new OrderCancelledEvent.CompensationAction(
+                "STOCK_RELEASE",
+                "inventory-service",
+                "Release reserved stock for order " + order.getOrderId().getValue(),
+                1
+            )), // compensationActions
+            "Order cancelled successfully" // cancellationNotes
         );
     }
 }

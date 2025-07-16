@@ -53,26 +53,33 @@ public class OrderEventPublishingAdapter implements PublishEventPort {
     }
     
     @Override
+    public void publishEvent(DomainEvent event) {
+        String topicName = getTopicForEvent(event);
+        enrichAndPublish(event, topicName);
+    }
+    
+    @Override
+    public void publishEvents(List<DomainEvent> events) {
+        events.forEach(this::publishEvent);
+    }
+    
+    // 이벤트 타입별 특수 메서드들 (레거시 호환성)
     public void publishOrderCreatedEvent(OrderCreatedEvent event) {
         enrichAndPublish(event, orderCreatedTopic);
     }
     
-    @Override
     public void publishOrderConfirmedEvent(OrderConfirmedEvent event) {
         enrichAndPublish(event, orderConfirmedTopic);
     }
     
-    @Override
     public void publishOrderPaidEvent(OrderPaidEvent event) {
         enrichAndPublish(event, orderPaidTopic);
     }
     
-    @Override
     public void publishOrderCompletedEvent(OrderCompletedEvent event) {
         enrichAndPublish(event, orderCompletedTopic);
     }
     
-    @Override
     public void publishOrderCancelledEvent(OrderCancelledEvent event) {
         enrichAndPublish(event, orderCancelledTopic);
     }
@@ -150,23 +157,24 @@ public class OrderEventPublishingAdapter implements PublishEventPort {
      * 이벤트 메타데이터 보강
      */
     private void enrichEvent(DomainEvent event) {
-        // 이벤트 ID가 없으면 생성
-        if (event.getEventId() == null) {
-            event.setEventId(UUID.randomUUID().toString());
-        }
-        
-        // 타임스탬프가 없으면 현재 시간
-        if (event.getTimestamp() == null) {
-            event.setTimestamp(Instant.now());
-        }
-        
-        // 서비스 정보 추가
-        event.setSourceService(serviceName);
-        
-        // Aggregate 타입 설정
-        if (event.getAggregateType() == null) {
-            event.setAggregateType("Order");
-        }
+        // DomainEvent 필드들이 final이므로 생성자에서 이미 설정됨
+        // 메타데이터는 이미 올바르게 설정되어 있음
+        log.debug("Event metadata - eventId: {}, timestamp: {}, aggregateType: {}, sourceService: {}", 
+                event.getEventId(), event.getTimestamp(), event.getAggregateType(), event.getSourceService());
+    }
+    
+    /**
+     * 이벤트 타입에 따른 토픽 결정
+     */
+    private String getTopicForEvent(DomainEvent event) {
+        return switch (event.getEventType()) {
+            case "OrderCreatedEvent" -> orderCreatedTopic;
+            case "OrderConfirmedEvent" -> orderConfirmedTopic;
+            case "OrderPaidEvent" -> orderPaidTopic;
+            case "OrderCompletedEvent" -> orderCompletedTopic;
+            case "OrderCancelledEvent" -> orderCancelledTopic;
+            default -> "order-events"; // 기본 토픽
+        };
     }
     
     /**

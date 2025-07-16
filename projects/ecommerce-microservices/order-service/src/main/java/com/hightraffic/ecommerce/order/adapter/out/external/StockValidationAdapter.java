@@ -145,7 +145,7 @@ public class StockValidationAdapter implements StockValidationPort {
         
         try {
             StockReservationRequest request = new StockReservationRequest(
-                productId.getValue(), 
+                productId, 
                 quantity, 
                 orderId
             );

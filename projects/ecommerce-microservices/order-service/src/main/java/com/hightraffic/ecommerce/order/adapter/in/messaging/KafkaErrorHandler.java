@@ -7,9 +7,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.kafka.listener.ConsumerAwareListenerErrorHandler;
-import org.springframework.kafka.listener.ListenerExecutionFailedException;
-import org.springframework.messaging.Message;
+import org.springframework.kafka.listener.CommonErrorHandler;
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -24,7 +23,7 @@ import java.util.Map;
  * 적절한 에러 처리를 수행합니다.
  */
 @Component
-public class KafkaErrorHandler implements ConsumerAwareListenerErrorHandler {
+public class KafkaErrorHandler implements CommonErrorHandler {
     
     private static final Logger log = LoggerFactory.getLogger(KafkaErrorHandler.class);
     
@@ -48,20 +47,13 @@ public class KafkaErrorHandler implements ConsumerAwareListenerErrorHandler {
         this.messageMetrics = messageMetrics;
     }
     
-    @Override
-    public Object handleError(Message<?> message, ListenerExecutionFailedException exception,
-                            Consumer<?, ?> consumer) {
+    public void handleRecord(Exception exception, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+                           MessageListenerContainer container) {
         
-        log.error("Kafka 메시지 처리 실패", exception);
+        log.error("Kafka 메시지 처리 실패: topic={}, partition={}, offset={}", 
+                record.topic(), record.partition(), record.offset(), exception);
         
         try {
-            // 메시지 정보 추출
-            ConsumerRecord<?, ?> record = extractConsumerRecord(message);
-            if (record == null) {
-                log.error("ConsumerRecord를 추출할 수 없습니다: {}", message);
-                return null;
-            }
-            
             // 메트릭 업데이트
             messageMetrics.incrementErrorCount(record.topic());
             
@@ -70,7 +62,7 @@ public class KafkaErrorHandler implements ConsumerAwareListenerErrorHandler {
                 log.warn("재시도 가능한 예외로 메시지 재처리: topic={}, partition={}, offset={}", 
                         record.topic(), record.partition(), record.offset());
                 messageMetrics.incrementRetryCount(record.topic());
-                throw exception; // 재시도를 위해 예외 다시 발생
+                throw new RuntimeException(exception); // 재시도를 위해 예외 다시 발생
             }
             
             // DLQ로 전송
@@ -82,8 +74,6 @@ public class KafkaErrorHandler implements ConsumerAwareListenerErrorHandler {
         } catch (Exception e) {
             log.error("에러 핸들링 중 추가 오류 발생", e);
         }
-        
-        return null;
     }
     
     /**
@@ -183,22 +173,4 @@ public class KafkaErrorHandler implements ConsumerAwareListenerErrorHandler {
             .anyMatch(retryableClass -> retryableClass.isAssignableFrom(throwable.getClass()));
     }
     
-    /**
-     * 메시지에서 ConsumerRecord 추출
-     */
-    @SuppressWarnings("unchecked")
-    private ConsumerRecord<?, ?> extractConsumerRecord(Message<?> message) {
-        Object payload = message.getPayload();
-        if (payload instanceof ConsumerRecord<?, ?>) {
-            return (ConsumerRecord<?, ?>) payload;
-        }
-        
-        // 헤더에서 추출 시도
-        Object record = message.getHeaders().get("kafka_receivedMessageKey");
-        if (record instanceof ConsumerRecord<?, ?>) {
-            return (ConsumerRecord<?, ?>) record;
-        }
-        
-        return null;
-    }
 }

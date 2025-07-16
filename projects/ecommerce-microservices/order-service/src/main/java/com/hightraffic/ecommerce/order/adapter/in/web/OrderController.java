@@ -6,6 +6,7 @@ import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.OrderItem;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
+import com.hightraffic.ecommerce.order.domain.model.vo.OrderStatus;
 import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 import jakarta.validation.Valid;
@@ -111,8 +112,9 @@ public class OrderController {
                 customerId, status, pageable.getPageNumber());
         
         // UseCase 실행
+        OrderStatus orderStatus = status != null ? OrderStatus.valueOf(status.toUpperCase()) : null;
         GetOrderUseCase.GetOrdersByCustomerQuery query = 
-            new GetOrderUseCase.GetOrdersByCustomerQuery(CustomerId.of(customerId), status, null, null, 
+            new GetOrderUseCase.GetOrdersByCustomerQuery(CustomerId.of(customerId), orderStatus, null, null, 
                 pageable.getPageNumber(), pageable.getPageSize());
         GetOrderUseCase.OrderListResponse result = getOrderUseCase.getCustomerOrders(query);
         
@@ -155,7 +157,7 @@ public class OrderController {
         CancelOrderUseCase.CancelOrderCommand command = new CancelOrderUseCase.CancelOrderCommand(
             OrderId.of(orderId),
             request.cancelReason(),
-            request.cancelReasonCode()
+            true // isCustomerInitiated - 고객이 직접 취소한 경우
         );
         cancelOrderUseCase.cancelOrder(command);
         
@@ -168,8 +170,8 @@ public class OrderController {
     
     private CreateOrderUseCase.CreateOrderCommand mapToCommand(CreateOrderRequest request) {
         // 주문 항목 변환
-        List<CreateOrderUseCase.OrderItem> items = request.orderItems().stream()
-            .map(item -> new CreateOrderUseCase.OrderItem(
+        List<CreateOrderUseCase.CreateOrderCommand.OrderItem> items = request.orderItems().stream()
+            .map(item -> new CreateOrderUseCase.CreateOrderCommand.OrderItem(
                 ProductId.of(item.productId()),
                 item.productName(),
                 item.quantity(),
@@ -180,21 +182,41 @@ public class OrderController {
         return new CreateOrderUseCase.CreateOrderCommand(
             CustomerId.of(request.customerId()),
             items,
-            request.orderNote()
+            request.orderNotes()
         );
     }
     
     private CreateOrderResponse mapToResponse(CreateOrderUseCase.CreateOrderResult result) {
         return CreateOrderResponse.success(
-            result.orderId(),
+            result.orderId().getValue(),
             result.orderNumber(),
-            result.customerId(),
+            result.customerId().getValue(),
             result.status(),
             result.totalAmount().getAmount(),
-            result.totalAmount().getCurrency(),
+            result.totalAmount().getCurrency().getCurrencyCode(),
             result.createdAt(),
             result.createdAt().plusDays(3), // 예상 배송일
             null // 결제 URL은 별도 서비스에서 처리
+        );
+    }
+    
+    private GetOrderResponse mapToResponse(GetOrderUseCase.OrderResponse response) {
+        return new GetOrderResponse(
+            response.getOrderId().getValue(),
+            response.getCustomerId().getValue(),
+            response.getStatus().name(),
+            response.getItems().stream()
+                .map(item -> new GetOrderResponse.OrderItemResponse(
+                    item.getProductId(),
+                    item.getProductName(),
+                    item.getQuantity(),
+                    item.getUnitPrice(),
+                    item.getTotalPrice()
+                ))
+                .collect(Collectors.toList()),
+            response.getTotalAmount(),
+            response.getCreatedAt(),
+            response.getLastModifiedAt()
         );
     }
     
@@ -202,10 +224,10 @@ public class OrderController {
         // 주문 항목 변환
         List<GetOrderResponse.OrderItemResponse> items = detail.orderItems().stream()
             .map(item -> GetOrderResponse.OrderItemResponse.from(
-                item.productId(),
-                item.productName(),
-                item.quantity(),
-                item.unitPrice()
+                item.getProductId(),
+                item.getProductName(),
+                item.getQuantity(),
+                item.getUnitPrice()
             ))
             .collect(Collectors.toList());
         
@@ -225,13 +247,13 @@ public class OrderController {
             GetOrderResponse.PaymentResponse.pending("CARD");
         
         return new GetOrderResponse(
-            detail.orderId(),
+            detail.orderId().getValue(),
             detail.orderNumber(),
-            detail.customerId(),
-            detail.status(),
+            detail.customerId().getValue(),
+            detail.status().name(),
             detail.statusDescription(),
             items,
-            detail.totalAmount(),
+            new java.math.BigDecimal(detail.totalAmount()),
             "KRW",
             shippingAddress,
             payment,
@@ -252,14 +274,14 @@ public class OrderController {
             .map(summary -> OrderListResponse.OrderSummary.create(
                 summary.getOrderId().getValue(),
                 summary.getOrderId().getValue(), // orderNumber
-                summary.getStatus(),
-                summary.getTotalAmount(),
+                summary.getStatus().name(),
+                summary.getTotalAmount().getAmount(),
                 summary.getItemCount(),
                 "상품", // firstProductName - TODO: 실제 첫 번째 상품명으로 수정
                 summary.getCreatedAt(),
                 null // deliveredAt
             ))
-            .toList();
+            .collect(Collectors.toList());
         
         return new OrderListResponse(
             orders,

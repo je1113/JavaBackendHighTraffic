@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hightraffic.ecommerce.order.adapter.in.messaging.dto.*;
 import com.hightraffic.ecommerce.order.application.handler.PaymentCompletedEventHandler;
 import com.hightraffic.ecommerce.order.application.handler.StockReservedEventHandler;
+import com.hightraffic.ecommerce.common.event.inventory.StockReservedEvent;
+import com.hightraffic.ecommerce.common.event.payment.PaymentCompletedEvent;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -301,16 +304,41 @@ public class OrderEventListener {
         // TODO: 주문 확정 Use Case 호출
     }
     
-    private Object mapToEvent(StockReservedEventMessage message) {
-        // Message DTO → Domain Event 변환
-        // TODO: 실제 도메인 이벤트로 변환
-        return message;
+    private StockReservedEvent mapToEvent(StockReservedEventMessage message) {
+        // StockReservedEventMessage를 StockReservedEvent로 변환
+        return new StockReservedEvent(
+            message.aggregateId(),
+            "RES_" + message.orderId(),
+            message.orderId(),
+            "CUSTOMER_" + message.orderId(), // customerId 추출 불가능하므로 임시값
+            message.reservedItems().stream()
+                .map(item -> new StockReservedEvent.ReservedItem(
+                    item.productId(),
+                    "Product Name", // productName은 메시지에 없으므로 임시값
+                    item.reservedQuantity().intValue(),
+                    "WH_01", // warehouseId는 메시지에 없으므로 임시값
+                    "SYSTEM", // reservedFrom은 메시지에 없으므로 임시값
+                    100.0 // unitPrice는 메시지에 없으므로 임시값
+                ))
+                .collect(Collectors.toList()),
+            message.timestamp().plus(message.reservationTimeout()),
+            "ORDER",
+            1
+        );
     }
     
-    private Object mapToEvent(PaymentCompletedEventMessage message) {
-        // Message DTO → Domain Event 변환
-        // TODO: 실제 도메인 이벤트로 변환
-        return message;
+    private PaymentCompletedEvent mapToEvent(PaymentCompletedEventMessage message) {
+        // PaymentCompletedEventMessage를 PaymentCompletedEvent로 변환
+        return new PaymentCompletedEvent(
+            message.paymentId(),
+            message.orderId(),
+            message.customerId(),
+            message.amount(),
+            message.currency(),
+            message.paymentMethod(),
+            message.transactionId(),
+            java.time.LocalDateTime.now() // paidAt 타입 변환
+        );
     }
     
     private void handleDeserializationError(String message, String topic, int partition, long offset, Exception e) {

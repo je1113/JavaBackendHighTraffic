@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
@@ -51,7 +52,7 @@ public class CreateOrderService implements CreateOrderUseCase {
     }
     
     @Override
-    public OrderId createOrder(CreateOrderCommand command) {
+    public CreateOrderResult createOrder(@Valid CreateOrderCommand command) {
         log.info("Creating order for customer: {}", command.getCustomerId());
         
         // 1. 중복 주문 검증
@@ -82,7 +83,7 @@ public class CreateOrderService implements CreateOrderUseCase {
         
         log.info("Order created successfully: {}", savedOrder.getOrderId());
         
-        return savedOrder.getOrderId();
+        return new CreateOrderResult(savedOrder.getOrderId(), "Order created successfully");
     }
     
     /**
@@ -119,15 +120,16 @@ public class CreateOrderService implements CreateOrderUseCase {
             order.getOrderId().getValue().toString(),
             order.getCustomerId().getValue().toString(),
             order.getItems().stream()
-                .map(item -> new OrderCreatedEvent.OrderItem(
+                .map(item -> new OrderCreatedEvent.OrderItemData(
                     item.getProductId().getValue().toString(),
                     item.getProductName(),
                     item.getQuantity(),
-                    item.getUnitPrice().getAmount()
+                    item.getUnitPrice().getAmount(),
+                    item.getUnitPrice().getAmount().multiply(java.math.BigDecimal.valueOf(item.getQuantity()))
                 ))
                 .collect(Collectors.toList()),
             order.getTotalAmount().getAmount(),
-            LocalDateTime.now()
+            order.getTotalAmount().getCurrency().getCurrencyCode()
         );
     }
     

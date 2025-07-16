@@ -85,16 +85,12 @@ public class ConfirmOrderService implements ConfirmOrderUseCase {
         return new OrderConfirmedEvent(
             order.getOrderId().getValue().toString(),
             order.getCustomerId().getValue().toString(),
-            order.getItems().stream()
-                .map(item -> new OrderConfirmedEvent.OrderItem(
-                    item.getProductId().getValue().toString(),
-                    item.getProductName(),
-                    item.getQuantity(),
-                    item.getUnitPrice().getAmount()
-                ))
-                .collect(Collectors.toList()),
+            "PENDING", // previousStatus
+            "CONFIRMED", // currentStatus
             order.getTotalAmount().getAmount(),
-            LocalDateTime.now()
+            "STOCK_RESERVATION_" + order.getOrderId().getValue().toString(), // stockReservationId
+            java.time.Instant.now().plus(java.time.Duration.ofDays(3)), // estimatedDeliveryDate
+            "Order confirmed and ready for payment" // notes
         );
     }
 }
