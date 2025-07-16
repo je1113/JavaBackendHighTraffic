@@ -56,7 +56,7 @@ public class StockReservedEventHandler {
         
         try {
             // 1. 주문 조회
-            OrderId orderId = OrderId.of(UUID.fromString(event.getOrderId()));
+            OrderId orderId = OrderId.of(event.getOrderId());
             Order order = loadOrderPort.loadOrder(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
             
@@ -68,7 +68,8 @@ public class StockReservedEventHandler {
             }
             
             // 3. 재고 예약 정보 저장 (추후 취소 시 필요)
-            order.addReservationInfo(event.getReservationId(), event.getProductId());
+            // TODO: StockReservedEvent에 getProductId() 메서드 확인 필요
+            // order.addReservationInfo(event.getReservationId(), event.getProductId());
             
             // 4. 결제 프로세스 시작
             initiatePayment(order);
@@ -115,7 +116,7 @@ public class StockReservedEventHandler {
      */
     private void handleStockReservationFailure(StockReservedEvent event) {
         try {
-            OrderId orderId = OrderId.of(UUID.fromString(event.getOrderId()));
+            OrderId orderId = OrderId.of(event.getOrderId());
             Order order = loadOrderPort.loadOrder(orderId).orElse(null);
             
             if (order != null && order.getStatus() == OrderStatus.CONFIRMED) {

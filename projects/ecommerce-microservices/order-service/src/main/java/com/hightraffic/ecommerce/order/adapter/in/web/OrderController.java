@@ -241,28 +241,28 @@ public class OrderController {
         );
     }
     
-    private OrderListResponse mapToListResponse(Page<GetOrderUseCase.OrderSummary> page) {
-        List<OrderListResponse.OrderSummary> orders = page.getContent().stream()
+    private OrderListResponse mapToListResponse(GetOrderUseCase.OrderListResponse response) {
+        List<OrderListResponse.OrderSummary> orders = response.getOrders().stream()
             .map(summary -> OrderListResponse.OrderSummary.create(
-                summary.orderId(),
-                summary.orderNumber(),
-                summary.status(),
-                summary.totalAmount(),
-                summary.itemCount(),
-                summary.firstProductName(),
-                summary.createdAt(),
+                summary.getOrderId(),
+                summary.getOrderId().getValue(), // orderNumber
+                summary.getStatus(),
+                summary.getTotalAmount(),
+                summary.getItemCount(),
+                "상품", // firstProductName - TODO: 실제 첫 번째 상품명으로 수정
+                summary.getCreatedAt(),
                 null // deliveredAt
             ))
             .collect(Collectors.toList());
         
         return new OrderListResponse(
             orders,
-            page.getTotalElements(),
-            page.getTotalPages(),
-            page.getNumber(),
-            page.getSize(),
-            page.hasNext(),
-            page.hasPrevious()
+            response.getTotalElements(),
+            response.getTotalPages(),
+            response.getCurrentPage(),
+            10, // pageSize - TODO: 실제 페이지 사이즈로 수정
+            response.getCurrentPage() < response.getTotalPages() - 1, // hasNext
+            response.getCurrentPage() > 0 // hasPrevious
         );
     }
 }

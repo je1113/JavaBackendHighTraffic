@@ -173,6 +173,15 @@ public interface GetOrderUseCase {
     }
     
     /**
+     * 주문 상세 정보 (OrderResponse 별칭)
+     */
+    class OrderDetail extends OrderResponse {
+        public OrderDetail(Order order) {
+            super(order);
+        }
+    }
+    
+    /**
      * 주문 목록 조회 응답
      */
     class OrderListResponse {

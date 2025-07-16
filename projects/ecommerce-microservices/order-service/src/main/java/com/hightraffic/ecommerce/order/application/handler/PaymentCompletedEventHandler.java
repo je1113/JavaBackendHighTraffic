@@ -55,7 +55,7 @@ public class PaymentCompletedEventHandler {
         
         try {
             // 1. 주문 조회
-            OrderId orderId = OrderId.of(UUID.fromString(event.getOrderId()));
+            OrderId orderId = OrderId.of(event.getOrderId());
             Order order = loadOrderPort.loadOrder(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
             
@@ -134,7 +134,7 @@ public class PaymentCompletedEventHandler {
      */
     private void handlePaymentCompletionFailure(PaymentCompletedEvent event) {
         try {
-            OrderId orderId = OrderId.of(UUID.fromString(event.getOrderId()));
+            OrderId orderId = OrderId.of(event.getOrderId());
             Order order = loadOrderPort.loadOrder(orderId).orElse(null);
             
             if (order != null) {

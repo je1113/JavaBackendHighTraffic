@@ -59,6 +59,9 @@ public class Order implements Serializable {
     @Column(name = "notes")
     private String notes;
     
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+    
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -156,6 +159,7 @@ public class Order implements Serializable {
         validateCanCancel();
         
         this.status = OrderStatus.CANCELLED;
+        this.cancellationReason = reason;
         this.notes = (notes != null ? notes + "\n" : "") + "취소 사유: " + reason;
         // TODO: 도메인 이벤트 발행 (OrderCancelledEvent)
     }
@@ -354,6 +358,14 @@ public class Order implements Serializable {
         return status.isFinalStatus();
     }
     
+    public boolean isCancellable() {
+        return status.isCancellable();
+    }
+    
+    public boolean canBeConfirmed() {
+        return status == OrderStatus.PENDING && !items.isEmpty();
+    }
+    
     // Getters
     public OrderId getId() {
         return id;
@@ -393,6 +405,14 @@ public class Order implements Serializable {
     
     public Long getVersion() {
         return version;
+    }
+    
+    public LocalDateTime getLastModifiedAt() {
+        return updatedAt;
+    }
+    
+    public String getCancellationReason() {
+        return cancellationReason;
     }
     
     @Override

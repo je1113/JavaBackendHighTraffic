@@ -28,9 +28,9 @@ public interface CreateOrderUseCase {
      * 주문 생성
      * 
      * @param command 주문 생성 명령
-     * @return 생성된 주문 ID
+     * @return 생성된 주문 정보
      */
-    OrderId createOrder(@Valid CreateOrderCommand command);
+    CreateOrderResult createOrder(@Valid CreateOrderCommand command);
     
     /**
      * 주문 생성 명령
@@ -107,6 +107,27 @@ public interface CreateOrderUseCase {
             public Money getUnitPrice() {
                 return unitPrice;
             }
+        }
+    }
+    
+    /**
+     * 주문 생성 결과
+     */
+    class CreateOrderResult {
+        private final OrderId orderId;
+        private final String message;
+        
+        public CreateOrderResult(OrderId orderId, String message) {
+            this.orderId = orderId;
+            this.message = message;
+        }
+        
+        public OrderId getOrderId() {
+            return orderId;
+        }
+        
+        public String getMessage() {
+            return message;
         }
     }
 }

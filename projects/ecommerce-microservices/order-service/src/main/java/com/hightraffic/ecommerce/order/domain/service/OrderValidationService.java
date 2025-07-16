@@ -92,6 +92,33 @@ public class OrderValidationService {
         }
     }
     
+    /**
+     * 주문 검증 (Order 객체 기반)
+     */
+    public void validateOrderItems(Order order) {
+        validateBasicOrderItems(order.getItems());
+    }
+    
+    /**
+     * 중복 주문 여부 확인
+     */
+    public boolean isDuplicateOrder(CustomerId customerId, List<ProductId> productIds, LocalDateTime timeWindow) {
+        int preventionMinutes = config.getTime().getDuplicateOrderPreventionMinutes();
+        LocalDateTime preventionTime = LocalDateTime.now().minusMinutes(preventionMinutes);
+        
+        List<Order> recentOrders = orderRepository.findByCustomerIdAndCreatedAtAfter(
+            customerId, preventionTime
+        );
+        
+        return recentOrders.stream()
+            .anyMatch(order -> {
+                Set<ProductId> orderProductIds = order.getItems().stream()
+                    .map(OrderItem::getProductId)
+                    .collect(Collectors.toSet());
+                return orderProductIds.equals(Set.copyOf(productIds));
+            });
+    }
+    
     // Helper methods
     
     private boolean isSameItemComposition(List<OrderItem> items1, List<OrderItem> items2) {

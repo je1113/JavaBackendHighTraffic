@@ -113,11 +113,16 @@ public interface StockValidationPort {
             this.failureReason = null;
         }
         
-        // 실패 생성자
-        public StockReservationResult(ProductId productId, String failureReason) {
+        // 실패 생성자 - 정적 팩토리 메서드로 대체
+        public static StockReservationResult failure(ProductId productId, String failureReason) {
+            return new StockReservationResult(productId, null, false, failureReason);
+        }
+        
+        // 내부 생성자
+        private StockReservationResult(ProductId productId, String reservationId, boolean success, String failureReason) {
             this.productId = productId;
-            this.success = false;
-            this.reservationId = null;
+            this.success = success;
+            this.reservationId = reservationId;
             this.failureReason = failureReason;
         }
         
