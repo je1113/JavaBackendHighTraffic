@@ -95,8 +95,19 @@ distributed:
 cache:
   redis:
     default-ttl: PT30M
+    product-ttl: PT10M
+    stock-ttl: PT5M
+    hot-items-ttl: PT1H
     key-prefix: "inventory:"
     enable-statistics: true
+    warming-threads: 4
+    warming-batch-size: 100
+    hot-item-threshold: 10
+    refresh-threshold: 60
+  warming:
+    enabled: true
+  maintenance:
+    interval: 300000
     
 logging:
   level:
