@@ -318,7 +318,7 @@ graph TB
   - CachePort 구현
 
 #### 5.3.2 Distributed Lock Adapter (2시간)
-- [ ] **5.3.2.1** RedisDistributedLockAdapter (2시간)
+- [x] **5.3.2.1** RedisDistributedLockAdapter (2시간)
   - Redisson 기반 구현
   - DistributedLockPort 구현
 

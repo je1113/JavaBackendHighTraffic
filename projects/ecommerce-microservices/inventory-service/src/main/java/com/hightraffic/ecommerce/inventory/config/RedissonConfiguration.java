@@ -163,6 +163,11 @@ public class RedissonConfiguration {
         private Duration defaultLeaseTime = Duration.ofSeconds(10);
         private boolean enableMetrics = true;
         private Duration metricsReportInterval = Duration.ofMinutes(1);
+        private boolean useFairLock = false;
+        private boolean enableWatchdog = true;
+        private boolean enableDeadlockDetection = true;
+        private Duration deadlockDetectionInterval = Duration.ofMinutes(1);
+        private Duration lockTimeoutCheckInterval = Duration.ofSeconds(30);
         
         public String getKeyPrefix() {
             return keyPrefix;
@@ -202,6 +207,46 @@ public class RedissonConfiguration {
         
         public void setMetricsReportInterval(Duration metricsReportInterval) {
             this.metricsReportInterval = metricsReportInterval;
+        }
+        
+        public boolean isUseFairLock() {
+            return useFairLock;
+        }
+        
+        public void setUseFairLock(boolean useFairLock) {
+            this.useFairLock = useFairLock;
+        }
+        
+        public boolean isEnableWatchdog() {
+            return enableWatchdog;
+        }
+        
+        public void setEnableWatchdog(boolean enableWatchdog) {
+            this.enableWatchdog = enableWatchdog;
+        }
+        
+        public boolean isEnableDeadlockDetection() {
+            return enableDeadlockDetection;
+        }
+        
+        public void setEnableDeadlockDetection(boolean enableDeadlockDetection) {
+            this.enableDeadlockDetection = enableDeadlockDetection;
+        }
+        
+        public Duration getDeadlockDetectionInterval() {
+            return deadlockDetectionInterval;
+        }
+        
+        public void setDeadlockDetectionInterval(Duration deadlockDetectionInterval) {
+            this.deadlockDetectionInterval = deadlockDetectionInterval;
+        }
+        
+        public Duration getLockTimeoutCheckInterval() {
+            return lockTimeoutCheckInterval;
+        }
+        
+        public void setLockTimeoutCheckInterval(Duration lockTimeoutCheckInterval) {
+            this.lockTimeoutCheckInterval = lockTimeoutCheckInterval;
         }
     }
 }
