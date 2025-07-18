@@ -3,6 +3,7 @@ package com.hightraffic.ecommerce.inventory.application.handler;
 import com.hightraffic.ecommerce.common.event.inventory.InsufficientStockEvent;
 import com.hightraffic.ecommerce.common.event.inventory.StockReservedEvent;
 import com.hightraffic.ecommerce.common.event.order.OrderCreatedEvent;
+import com.hightraffic.ecommerce.inventory.application.port.in.HandleOrderCreatedEventUseCase;
 import com.hightraffic.ecommerce.inventory.application.port.in.ReserveStockUseCase;
 import com.hightraffic.ecommerce.inventory.application.port.out.PublishEventPort;
 import com.hightraffic.ecommerce.inventory.domain.exception.InsufficientStockException;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
  * 재고 예약에 실패하면 InsufficientStockEvent를 발행합니다.
  */
 @Component
-public class OrderCreatedEventHandler {
+public class OrderCreatedEventHandler implements HandleOrderCreatedEventUseCase {
     
     private static final Logger log = LoggerFactory.getLogger(OrderCreatedEventHandler.class);
     
@@ -45,13 +46,35 @@ public class OrderCreatedEventHandler {
         this.publishEventPort = publishEventPort;
     }
     
+    @Override
+    @Transactional
+    public void handle(OrderCreatedCommand command) {
+        // Command를 OrderCreatedEvent로 변환하여 기존 로직 재사용
+        OrderCreatedEvent event = new OrderCreatedEvent(
+            command.orderId(),
+            "unknown", // customerId는 이벤트 처리에 필요없음
+            command.items().stream()
+                .map(item -> new OrderCreatedEvent.OrderItemData(
+                    item.productId(),
+                    "Unknown Product", // productName
+                    item.quantity(),
+                    java.math.BigDecimal.ZERO, // unitPrice는 재고 예약에 필요없음
+                    java.math.BigDecimal.ZERO // totalPrice는 재고 예약에 필요없음
+                ))
+                .toList(),
+            java.math.BigDecimal.ZERO, // totalAmount는 재고 예약에 필요없음
+            "KRW" // currency
+        );
+        
+        handleOrderCreatedEvent(event);
+    }
+    
     /**
-     * 주문 생성 이벤트 처리
+     * 주문 생성 이벤트 처리 (기존 로직)
      * 
      * @param event 주문 생성 이벤트
      */
-    @Transactional
-    public void handle(OrderCreatedEvent event) {
+    private void handleOrderCreatedEvent(OrderCreatedEvent event) {
         log.info("주문 생성 이벤트 처리 시작: orderId={}, customerId={}, items={}",
                 event.getOrderId(), event.getCustomerId(), event.getOrderItems().size());
         

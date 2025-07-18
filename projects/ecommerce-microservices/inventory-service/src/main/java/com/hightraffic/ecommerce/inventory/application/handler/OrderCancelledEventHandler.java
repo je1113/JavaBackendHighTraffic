@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hightraffic.ecommerce.common.event.inventory.StockReleasedEvent;
 import com.hightraffic.ecommerce.common.event.order.OrderCancelledEvent;
+import com.hightraffic.ecommerce.inventory.application.port.in.HandleOrderCancelledEventUseCase;
 import com.hightraffic.ecommerce.inventory.application.port.in.RestoreStockUseCase;
 import com.hightraffic.ecommerce.inventory.application.port.out.LoadProductsByConditionPort;
 import com.hightraffic.ecommerce.inventory.application.port.out.PublishEventPort;
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
  * 재고를 복원합니다.
  */
 @Component
-public class OrderCancelledEventHandler {
+public class OrderCancelledEventHandler implements HandleOrderCancelledEventUseCase {
     
     private static final Logger log = LoggerFactory.getLogger(OrderCancelledEventHandler.class);
     
@@ -46,13 +47,32 @@ public class OrderCancelledEventHandler {
         this.objectMapper = objectMapper;
     }
     
+    @Override
+    @Transactional
+    public void handle(OrderCancelledCommand command) {
+        // Command를 OrderCancelledEvent로 변환하여 기존 로직 재사용
+        OrderCancelledEvent event = new OrderCancelledEvent(
+            command.orderId(), // orderId
+            "unknown", // customerId
+            "CONFIRMED", // previousStatus
+            "Event-based cancellation", // cancelReason
+            "EVENT_HANDLER", // cancelReasonCode
+            "SYSTEM", // cancelledBy
+            "SYSTEM", // cancelledByType
+            BigDecimal.ZERO, // refundAmount
+            new java.util.ArrayList<>(), // compensationActions - 빈 리스트로 처리
+            "Handled by inventory event listener" // cancellationNotes
+        );
+        
+        handleOrderCancelledEvent(event);
+    }
+    
     /**
-     * 주문 취소 이벤트 처리
+     * 주문 취소 이벤트 처리 (기존 로직)
      * 
      * @param event 주문 취소 이벤트
      */
-    @Transactional
-    public void handle(OrderCancelledEvent event) {
+    private void handleOrderCancelledEvent(OrderCancelledEvent event) {
         log.info("주문 취소 이벤트 처리 시작: orderId={}, customerId={}, reason={}, cancelledBy={}({})",
                 event.getOrderId(), event.getCustomerId(), event.getCancelReason(),
                 event.getCancelledBy(), event.getCancelledByType());

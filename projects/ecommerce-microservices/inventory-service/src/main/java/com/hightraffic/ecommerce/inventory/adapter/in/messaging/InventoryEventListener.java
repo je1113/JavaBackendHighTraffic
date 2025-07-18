@@ -3,8 +3,8 @@ package com.hightraffic.ecommerce.inventory.adapter.in.messaging;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hightraffic.ecommerce.inventory.adapter.in.messaging.dto.*;
-import com.hightraffic.ecommerce.inventory.application.handler.OrderCancelledEventHandler;
-import com.hightraffic.ecommerce.inventory.application.handler.OrderCreatedEventHandler;
+import com.hightraffic.ecommerce.inventory.application.port.in.HandleOrderCreatedEventUseCase;
+import com.hightraffic.ecommerce.inventory.application.port.in.HandleOrderCancelledEventUseCase;
 import com.hightraffic.ecommerce.common.event.order.OrderCreatedEvent;
 import com.hightraffic.ecommerce.common.event.order.OrderCancelledEvent;
 import java.util.List;
@@ -33,15 +33,15 @@ public class InventoryEventListener {
     
     private static final Logger log = LoggerFactory.getLogger(InventoryEventListener.class);
     
-    private final OrderCreatedEventHandler orderCreatedEventHandler;
-    private final OrderCancelledEventHandler orderCancelledEventHandler;
+    private final HandleOrderCreatedEventUseCase handleOrderCreatedEventUseCase;
+    private final HandleOrderCancelledEventUseCase handleOrderCancelledEventUseCase;
     private final ObjectMapper objectMapper;
     
-    public InventoryEventListener(OrderCreatedEventHandler orderCreatedEventHandler,
-                                OrderCancelledEventHandler orderCancelledEventHandler,
+    public InventoryEventListener(HandleOrderCreatedEventUseCase handleOrderCreatedEventUseCase,
+                                HandleOrderCancelledEventUseCase handleOrderCancelledEventUseCase,
                                 ObjectMapper objectMapper) {
-        this.orderCreatedEventHandler = orderCreatedEventHandler;
-        this.orderCancelledEventHandler = orderCancelledEventHandler;
+        this.handleOrderCreatedEventUseCase = handleOrderCreatedEventUseCase;
+        this.handleOrderCancelledEventUseCase = handleOrderCancelledEventUseCase;
         this.objectMapper = objectMapper;
     }
     
@@ -78,8 +78,19 @@ public class InventoryEventListener {
             // 메시지 유효성 검증
             validateOrderCreatedEvent(eventMessage);
             
-            // 이벤트 핸들러 호출
-            orderCreatedEventHandler.handle(mapToEvent(eventMessage));
+            // UseCase 호출 - Command로 변환
+            HandleOrderCreatedEventUseCase.OrderCreatedCommand command = 
+                new HandleOrderCreatedEventUseCase.OrderCreatedCommand(
+                    eventMessage.orderId(),
+                    eventMessage.orderItems().stream()
+                        .map(item -> new HandleOrderCreatedEventUseCase.OrderItem(
+                            item.productId(),
+                            item.quantity()
+                        ))
+                        .toList()
+                );
+            
+            handleOrderCreatedEventUseCase.handle(command);
             
             // 수동 커밋
             acknowledgment.acknowledge();
@@ -131,8 +142,13 @@ public class InventoryEventListener {
             // 메시지 유효성 검증
             validateOrderCancelledEvent(eventMessage);
             
-            // 이벤트 핸들러 호출
-            orderCancelledEventHandler.handle(mapToEvent(eventMessage));
+            // UseCase 호출 - Command로 변환
+            HandleOrderCancelledEventUseCase.OrderCancelledCommand command = 
+                new HandleOrderCancelledEventUseCase.OrderCancelledCommand(
+                    eventMessage.orderId()
+                );
+            
+            handleOrderCancelledEventUseCase.handle(command);
             
             // 수동 커밋
             acknowledgment.acknowledge();

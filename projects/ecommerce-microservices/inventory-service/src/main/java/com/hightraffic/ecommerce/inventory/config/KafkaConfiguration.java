@@ -1,5 +1,6 @@
-package com.hightraffic.ecommerce.inventory.adapter.in.messaging;
+package com.hightraffic.ecommerce.inventory.config;
 
+import com.hightraffic.ecommerce.inventory.adapter.in.messaging.KafkaErrorHandler;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
