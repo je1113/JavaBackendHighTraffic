@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/inventory_service
+    username: inventory_user
+    password: inventory_pass123!
+  
+  redis:
+    host: redis
+    port: 6379
+    password: redis_password123!
+  
+  kafka:
+    bootstrap-servers: kafka:9094
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://admin:admin@service-discovery:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    hostname: inventory-service

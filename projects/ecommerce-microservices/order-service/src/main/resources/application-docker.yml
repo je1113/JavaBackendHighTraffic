@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/order_service
+    username: order_user
+    password: order_pass123!
+  
+  kafka:
+    bootstrap-servers: kafka:9094
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://admin:admin@service-discovery:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    hostname: order-service
+
+# External services
+external-services:
+  payment:
+    base-url: http://payment-service:8082
+  stock-validation:
+    base-url: http://inventory-service:8081

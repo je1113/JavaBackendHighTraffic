@@ -1,0 +1,46 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: service-discovery
+  security:
+    user:
+      name: ${EUREKA_USERNAME:admin}
+      password: ${EUREKA_PASSWORD:admin}
+
+eureka:
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  server:
+    enable-self-preservation: true
+    eviction-interval-timer-in-ms: 60000
+    renewal-percent-threshold: 0.85
+    renewal-threshold-update-interval-ms: 900000
+    peer-eureka-nodes-update-interval-ms: 600000
+    wait-time-in-ms-when-sync-empty: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
