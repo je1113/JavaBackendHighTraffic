@@ -21,6 +21,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
     implementation libs.redisson.spring.boot.starter
     
+    // Bucket4j for Rate Limiting
+    implementation 'com.bucket4j:bucket4j-core:8.7.0'
+    implementation 'com.bucket4j:bucket4j-redis:8.7.0'
+    
+    // Health Check
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
     // Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.security:spring-security-oauth2-resource-server'

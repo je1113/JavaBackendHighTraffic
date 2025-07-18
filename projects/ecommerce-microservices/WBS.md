@@ -327,10 +327,10 @@ graph TB
 ## 🌐 6주차: API Gateway & Service Discovery (16시간)
 
 ### 🚪 6.1 API Gateway 구현 (12시간)
-- [ ] **6.1.1** Spring Cloud Gateway 설정 (4시간)
-- [ ] **6.1.2** 라우팅 규칙 설정 (3시간)
-- [ ] **6.1.3** 인증/인가 필터 (3시간)
-- [ ] **6.1.4** Rate Limiting & Circuit Breaker (2시간)
+- [x] **6.1.1** Spring Cloud Gateway 설정 (4시간)
+- [x] **6.1.2** 라우팅 규칙 설정 (3시간)
+- [x] **6.1.3** 인증/인가 필터 (3시간)
+- [x] **6.1.4** Rate Limiting & Circuit Breaker (2시간)
 
 ### 🔍 6.2 Service Discovery 구현 (4시간)
 - [ ] **6.2.1** Eureka Server 설정 (2시간)
