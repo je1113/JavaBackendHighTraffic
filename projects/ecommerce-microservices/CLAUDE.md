@@ -430,6 +430,129 @@ docker exec -it postgres psql -U inventory_user -d inventory_service
 3. Advanced caching strategies
 4. Performance testing automation
 
+## 🧪 테스트 작성 규칙
+
+### Value Object 생성 규칙
+모든 Value Object들은 private 생성자를 가지며, 정적 팩토리 메서드를 사용해야 합니다.
+
+#### 필수 사용 패턴:
+```java
+// ❌ 잘못된 사용법 - 컴파일 에러 발생
+new ProductId("PROD-001")
+new OrderId(UUID.randomUUID())
+new CustomerId("CUST-001")
+
+// ✅ 올바른 사용법 - 정적 팩토리 메서드 사용
+ProductId.of("550e8400-e29b-41d4-a716-446655440001")
+OrderId.of(UUID.randomUUID().toString())
+CustomerId.of("550e8400-e29b-41d4-a716-446655440000")
+```
+
+#### UUID 형식 요구사항:
+모든 ID Value Object들은 유효한 UUID 형식을 요구합니다.
+
+**테스트용 UUID 패턴:**
+```java
+// Customer IDs
+CustomerId.of("550e8400-e29b-41d4-a716-446655440000")
+
+// Product IDs (순차적)
+ProductId.of("550e8400-e29b-41d4-a716-446655440001")
+ProductId.of("550e8400-e29b-41d4-a716-446655440002")
+ProductId.of("550e8400-e29b-41d4-a716-446655440003")
+
+// 동적 생성 (루프 등)
+String.format("550e8400-e29b-41d4-a716-4466554400%02d", i)
+```
+
+### 이벤트 클래스 메서드 네이밍
+Event 클래스들은 서로 다른 메서드 네이밍을 사용합니다:
+
+```java
+// OrderCreatedEvent
+event.getOrderItems()  // ❌ getItems() 아님
+
+// OrderPaidEvent  
+event.getOrderItems()  // ❌ getItems() 아님
+event.getTransactionId()  // ❌ getPaymentTransactionId() 아님
+
+// OrderCancelledEvent
+event.getCancelReason()  // ❌ getCancellationReason() 아님
+event.getCompensationActions().get(0).getActionType()  // ❌ getType() 아님
+
+// PaymentCompletedEvent 생성자 파라미터 순서
+new PaymentCompletedEvent(
+    paymentId,      // 1st
+    orderId,        // 2nd  
+    customerId,     // 3rd
+    amount,         // 4th
+    currency,       // 5th
+    paymentMethod,  // 6th
+    transactionId,  // 7th
+    paidAt          // 8th
+)
+```
+
+### 테스트 작성 시 주의사항
+1. **모든 Value Object는 정적 팩토리 메서드 사용**
+2. **UUID 형식의 유효한 문자열 사용**
+3. **이벤트 클래스의 올바른 메서드명 확인**
+4. **생성자 파라미터 순서와 개수 확인**
+5. **관련 assertion도 새로운 값에 맞게 업데이트**
+
+## 🎯 도메인 규칙 및 설계 원칙
+
+### 주문 상태 전이 규칙
+주문 상태는 명확한 비즈니스 규칙에 따라 전이됩니다:
+
+1. **취소 가능한 상태**
+   - `PENDING`, `CONFIRMED`, `PAYMENT_PROCESSING`, `PAID`, `PREPARING`
+   - 주의: `PAYMENT_PENDING`은 취소 불가 (결제 프로세스가 시작되지 않은 상태)
+
+2. **환불 가능한 상태**
+   - `PAID`, `PREPARING`, `SHIPPED`, `DELIVERED`, `COMPLETED`
+
+3. **최종 상태**
+   - `CANCELLED`, `REFUNDED`, `FAILED`
+   - 이 상태에서는 더 이상 상태 전이 불가
+
+### 이벤트 처리 원칙
+
+1. **비즈니스 규칙 위반 vs 기술적 실패**
+   ```java
+   // 비즈니스 규칙 위반 - 재시도하지 않음
+   - OrderNotFoundException
+   - InvalidOrderStateException
+   - DuplicateOrderItemException
+   
+   // 기술적 실패 - 재시도 가능
+   - Database connection errors
+   - Network timeouts
+   - External service failures
+   ```
+
+2. **중복 이벤트 처리**
+   - 이미 처리된 상태로의 전이 시도는 무시 (멱등성 보장)
+   - 중복은 분산 시스템에서 정상적인 상황으로 간주
+
+3. **보상 트랜잭션**
+   - 취소된 주문에 대한 결제 완료 이벤트 → 환불 프로세스 트리거 고려
+   - 재고 부족으로 인한 주문 실패 → 결제 취소 프로세스 실행
+
+### 테스트 작성 시 주의사항
+
+1. **상태 전이 테스트**
+   - 항상 유효한 상태 전이 경로를 따라야 함
+   - 예: PAYMENT_PENDING → PAYMENT_PROCESSING → PAID
+
+2. **도메인 이벤트 테스트**
+   - 이벤트 발행 순서가 비즈니스 로직과 일치하는지 확인
+   - 이벤트 내용이 도메인 상태를 정확히 반영하는지 검증
+
+3. **예외 상황 테스트**
+   - 비즈니스 규칙 위반 시나리오 검증
+   - 재시도 가능/불가능한 상황 구분하여 테스트
+
 ---
 
 This documentation provides a comprehensive overview of the e-commerce microservices system. For specific implementation details, refer to individual service documentation and code comments.

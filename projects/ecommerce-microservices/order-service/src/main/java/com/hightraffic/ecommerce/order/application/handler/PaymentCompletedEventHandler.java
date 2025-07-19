@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -66,7 +67,10 @@ public class PaymentCompletedEventHandler implements HandlePaymentCompletedEvent
             // 3. 결제 정보 저장
             savePaymentInfo(order, event);
             
-            // 4. 주문 상태를 PAID로 업데이트
+            // 4. 주문 상태를 PAID로 업데이트 (PAYMENT_PENDING → PAYMENT_PROCESSING → PAID)
+            if (order.getStatus() == OrderStatus.PAYMENT_PENDING) {
+                order.markAsPaymentProcessing();
+            }
             order.markAsPaid();
             Order paidOrder = saveOrderPort.saveOrder(order);
             
@@ -75,10 +79,14 @@ public class PaymentCompletedEventHandler implements HandlePaymentCompletedEvent
             
             log.info("Order marked as paid successfully: {}", orderId);
             
+        } catch (OrderNotFoundException | InvalidOrderStateException e) {
+            // 비즈니스 규칙 위반이나 주문을 찾을 수 없는 경우는 재시도하지 않음
+            log.warn("Payment completed event rejected for order: {} - {}", 
+                event.getOrderId(), e.getMessage());
         } catch (Exception e) {
             log.error("Failed to handle payment completed event for order: {}", 
                 event.getOrderId(), e);
-            handlePaymentCompletionFailure(event);
+            handlePaymentCompletionFailure(event, e);
         }
     }
     
@@ -133,17 +141,28 @@ public class PaymentCompletedEventHandler implements HandlePaymentCompletedEvent
     /**
      * 결제 완료 처리 실패 핸들링
      */
-    private void handlePaymentCompletionFailure(PaymentCompletedEvent event) {
+    private void handlePaymentCompletionFailure(PaymentCompletedEvent event, Exception exception) {
         try {
             OrderId orderId = OrderId.of(event.getOrderId());
             Order order = loadOrderPort.loadOrder(orderId).orElse(null);
             
             if (order != null) {
-                // 상태에 따라 다른 처리
+                // 상태에 따라 다른 처리 - 결제 관련 상태라면 재시도 가능
                 if (order.getStatus() == OrderStatus.PAYMENT_PENDING || 
-                    order.getStatus() == OrderStatus.PAYMENT_PROCESSING) {
-                    // 재시도 가능한 상태로 유지
-                    order.addNotes("Payment completion handling failed. Will retry.");
+                    order.getStatus() == OrderStatus.PAYMENT_PROCESSING ||
+                    order.getStatus() == OrderStatus.PAID) {
+                    // 재시도 가능한 상태로 유지 - 상태를 PAYMENT_PENDING으로 되돌림
+                    try {
+                        Field statusField = Order.class.getDeclaredField("status");
+                        statusField.setAccessible(true);
+                        statusField.set(order, OrderStatus.PAYMENT_PENDING);
+                    } catch (Exception ex) {
+                        log.warn("Could not reset order status for retry: {}", ex.getMessage());
+                    }
+                    
+                    String failureInfo = String.format("Payment completion handling failed: %s. Will retry.", 
+                        exception.getMessage());
+                    order.addNotes(failureInfo);
                     saveOrderPort.saveOrder(order);
                 }
             }

@@ -9,7 +9,7 @@
 - `OrderId orderId` - UUID 기반 전역 고유 식별자
 - `CustomerId customerId` - 고객 참조 (Value Object)
 - `List<OrderItem> orderItems` - 주문 아이템 컬렉션 (Entity)
-- `OrderStatus status` - 주문 상태 (Value Object, 12가지 상태)
+- `OrderStatus status` - 주문 상태 (Value Object, 13가지 상태)
 - `Money totalAmount` - 총 주문 금액 (BigDecimal 기반 Value Object)
 - `LocalDateTime createdAt` - 주문 생성 시각
 - `LocalDateTime lastModifiedAt` - 최종 수정 시각
@@ -26,7 +26,7 @@
 - `OrderId`: UUID 기반, 불변, 유효성 검증
 - `CustomerId`: UUID 기반, 불변, 유효성 검증
 - `ProductId`: UUID 기반, 불변, 유효성 검증
-- `OrderStatus`: 12가지 상태 enum, 전이 규칙 내장
+- `OrderStatus`: 13가지 상태 enum (PENDING, CONFIRMED, PAYMENT_PENDING, PAYMENT_PROCESSING, PAID, PREPARING, SHIPPED, DELIVERED, COMPLETED, CANCELLED, REFUNDING, REFUNDED, FAILED), 전이 규칙 내장
 - `Money`: BigDecimal 기반, 통화 단위, 연산 지원
 
 #### ⚡ 행위 (Behaviors)
@@ -40,13 +40,18 @@
 + getItemCount(): int
 
 // 상태 관리
-+ confirm(): void                    // PENDING → CONFIRMED
-+ cancel(String reason): void        // CONFIRMED 이전만 가능
-+ markAsPaid(): void                // CONFIRMED → PAID
-+ ship(): void                      // PAID → SHIPPED
-+ complete(): void                  // SHIPPED → COMPLETED
-+ returnOrder(String reason): void   // COMPLETED → RETURNED
-+ refund(): void                    // RETURNED → REFUNDED
++ confirm(): void                        // PENDING → CONFIRMED
++ markAsPaymentPending(): void           // CONFIRMED → PAYMENT_PENDING
++ markAsPaymentProcessing(): void        // PAYMENT_PENDING → PAYMENT_PROCESSING
++ markAsPaid(): void                     // PAYMENT_PROCESSING → PAID
++ markAsPreparing(): void                // PAID → PREPARING
++ markAsShipped(): void                  // PREPARING → SHIPPED
++ markAsDelivered(): void                // SHIPPED → DELIVERED
++ complete(): void                       // DELIVERED → COMPLETED
++ cancel(String reason): void            // 취소 가능한 상태에서만
++ markAsRefunding(): void                // PAID/PREPARING/SHIPPED/DELIVERED/COMPLETED → REFUNDING
++ markAsRefunded(): void                 // REFUNDING → REFUNDED
++ markAsFailed(String reason): void      // 여러 상태에서 실패 가능
 
 // 조회 메서드
 + isConfirmed(): boolean
@@ -59,8 +64,13 @@
 **OrderStatus 행위**
 ```java
 + canTransitionTo(OrderStatus target): boolean
-+ getValidTransitions(): Set<OrderStatus>
-+ isTerminalState(): boolean
++ isCancellable(): boolean              // PENDING, CONFIRMED, PAYMENT_PROCESSING, PAID, PREPARING
++ isRefundable(): boolean                // PAID, PREPARING, SHIPPED, DELIVERED, COMPLETED
++ isFinalStatus(): boolean               // CANCELLED, REFUNDED, FAILED
++ isPaid(): boolean                      // PAID 이후 상태들
++ isActive(): boolean                    // 취소/실패/환불이 아닌 상태
++ isAfterShipping(): boolean             // DELIVERED, COMPLETED, REFUNDING, REFUNDED
++ getCode(): String
 + getDescription(): String
 ```
 
@@ -77,13 +87,19 @@
 #### 🔒 규칙 (Business Rules)
 **Order 불변성 규칙**
 1. **주문 생성 규칙**: 최소 1개 이상의 아이템, 모든 수량은 양수
-2. **상태 전이 규칙**: 정의된 전이 경로만 허용 (PENDING → CONFIRMED → PAID → SHIPPED → COMPLETED)
-3. **취소 가능 조건**: CONFIRMED 이전 상태에서만 취소 가능
-4. **반품 가능 조건**: COMPLETED 상태에서만 반품 가능
+2. **상태 전이 규칙**: 정의된 전이 경로만 허용
+   - 정상 경로: PENDING → CONFIRMED → PAYMENT_PENDING → PAYMENT_PROCESSING → PAID → PREPARING → SHIPPED → DELIVERED → COMPLETED
+   - 취소 경로: 취소 가능한 상태에서 → CANCELLED
+   - 환불 경로: 환불 가능한 상태에서 → REFUNDING → REFUNDED
+   - 실패 경로: 여러 상태에서 → FAILED
+3. **취소 가능 조건**: PENDING, CONFIRMED, PAYMENT_PROCESSING, PAID, PREPARING 상태에서만 취소 가능
+   - 주의: PAYMENT_PENDING은 취소 불가 (결제 프로세스 시작 전)
+4. **환불 가능 조건**: PAID, PREPARING, SHIPPED, DELIVERED, COMPLETED 상태에서 환불 가능
 5. **아이템 중복 방지**: 동일한 ProductId를 가진 아이템 중복 추가 불가
-6. **아이템 개수 제한**: 최대 50개 아이템까지 허용
+6. **아이템 개수 제한**: 최대 100개 아이템까지 허용
 7. **가격 스냅샷**: 주문 시점의 가격을 보존하여 불변성 보장
 8. **총액 일관성**: orderItems의 totalPrice 합계와 totalAmount 일치
+9. **최종 상태 불변성**: CANCELLED, REFUNDED, FAILED는 최종 상태로 추가 전이 불가
 
 **Domain Events**
 - `OrderCreatedEvent`: 주문 생성 시 발행 → 재고 예약 요청

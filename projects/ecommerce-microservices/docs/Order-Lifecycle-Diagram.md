@@ -6,53 +6,74 @@
 stateDiagram-v2
     [*] --> PENDING: 주문 생성
     
-    PENDING --> STOCK_RESERVED: 재고 예약 성공
-    PENDING --> CANCELLED: 재고 부족/예약 실패
+    PENDING --> CONFIRMED: 재고 예약 성공
+    PENDING --> CANCELLED: 고객 취소
+    PENDING --> FAILED: 재고 부족
     
-    STOCK_RESERVED --> PAYMENT_PROCESSING: 결제 시작
-    STOCK_RESERVED --> CANCELLED: 예약 타임아웃/고객 취소
+    CONFIRMED --> PAYMENT_PENDING: 결제 대기
+    CONFIRMED --> CANCELLED: 고객 취소
+    
+    PAYMENT_PENDING --> PAYMENT_PROCESSING: 결제 시작
+    PAYMENT_PENDING --> CANCELLED: 타임아웃/결제 포기
+    PAYMENT_PENDING --> FAILED: 시스템 오류
     
     PAYMENT_PROCESSING --> PAID: 결제 성공
-    PAYMENT_PROCESSING --> CANCELLED: 결제 실패
+    PAYMENT_PROCESSING --> FAILED: 결제 실패
+    PAYMENT_PROCESSING --> CANCELLED: 고객 취소
     
-    PAID --> CONFIRMED: 주문 확정
-    PAID --> CANCELLED: 확정 전 취소
+    PAID --> PREPARING: 상품 준비
+    PAID --> REFUNDING: 환불 요청
     
-    CONFIRMED --> PREPARING: 상품 준비
-    CONFIRMED --> CANCELLED: 준비 전 취소 (패널티)
-    
-    PREPARING --> SHIPPING: 배송 시작
+    PREPARING --> SHIPPED: 배송 시작
     PREPARING --> CANCELLED: 특수 사유 취소
     
-    SHIPPING --> DELIVERED: 배송 완료
-    SHIPPING --> RETURNED: 반품 요청
+    SHIPPED --> DELIVERED: 배송 완료
     
     DELIVERED --> COMPLETED: 구매 확정
-    DELIVERED --> RETURNED: 반품 요청
+    DELIVERED --> REFUNDING: 반품 요청
     
-    COMPLETED --> [*]: 주문 완료
-    RETURNED --> REFUNDED: 환불 완료
-    REFUNDED --> [*]: 주문 종료
+    COMPLETED --> REFUNDING: 환불 요청
+    
+    REFUNDING --> REFUNDED: 환불 완료
+    
     CANCELLED --> [*]: 주문 취소
+    FAILED --> [*]: 주문 실패
+    REFUNDED --> [*]: 환불 완료
+    COMPLETED --> [*]: 정상 완료
     
     note right of PENDING
         초기 상태
         재고 확인 중
     end note
     
-    note right of STOCK_RESERVED
-        재고 예약됨
-        30분 타임아웃
+    note right of PAYMENT_PENDING
+        결제 대기 중
+        취소 불가능 상태
+    end note
+    
+    note right of PAYMENT_PROCESSING
+        결제 진행 중
+        취소 가능 상태
     end note
     
     note right of PAID
         결제 완료
-        재고 차감 대기
+        환불 가능 시작
     end note
     
-    note right of CONFIRMED
-        재고 차감 완료
-        준비 시작 가능
+    note right of CANCELLED
+        최종 상태
+        추가 전이 불가
+    end note
+    
+    note right of FAILED
+        최종 상태
+        비즈니스/기술 실패
+    end note
+    
+    note right of REFUNDED
+        최종 상태
+        환불 완료
     end note
 ```
 
@@ -121,12 +142,14 @@ sequenceDiagram
         IS->>EB: StockReservedEvent
         
         EB->>OS: StockReservedEvent
-        OS->>OS: 상태 변경 (STOCK_RESERVED)
+        OS->>OS: 상태 변경 (CONFIRMED)
     end
     
     rect rgb(255, 230, 200)
         note right of PS: 3. 결제 처리 단계
+        OS->>OS: 상태 변경 (PAYMENT_PENDING)
         OS->>PS: 결제 요청
+        OS->>OS: 상태 변경 (PAYMENT_PROCESSING)
         PS->>PS: 결제 처리
         PS->>EB: PaymentCompletedEvent
         
@@ -220,6 +243,7 @@ sequenceDiagram
 
 ## 6. 주요 타임아웃 및 정책
 
+### 6.1 타임아웃 정책
 | 단계 | 타임아웃 | 정책 |
 |------|----------|------|
 | 재고 예약 | 30분 | 예약 후 30분 내 미결제 시 자동 해제 |
@@ -227,6 +251,28 @@ sequenceDiagram
 | 주문 확정 | 24시간 | 결제 후 24시간 내 확정 필요 |
 | 배송 준비 | 48시간 | 확정 후 48시간 내 배송 시작 |
 | 구매 확정 | 7일 | 배송 완료 후 7일 내 자동 구매 확정 |
+
+### 6.2 취소 가능 상태
+| 상태 | 취소 가능 여부 | 비고 |
+|------|----------------|------|
+| PENDING | ✅ 가능 | 재고 예약 전 자유 취소 |
+| CONFIRMED | ✅ 가능 | 결제 전 자유 취소 |
+| PAYMENT_PENDING | ❌ 불가능 | 결제 프로세스 시작 전 |
+| PAYMENT_PROCESSING | ✅ 가능 | 결제 진행 중 취소 가능 |
+| PAID | ✅ 가능 | 배송 준비 전까지 취소 가능 |
+| PREPARING | ✅ 가능 | 특수 사유만 취소 가능 |
+| SHIPPED | ❌ 불가능 | 배송 시작 후 취소 불가 |
+| DELIVERED | ❌ 불가능 | 반품으로만 처리 |
+| COMPLETED | ❌ 불가능 | 환불로만 처리 |
+
+### 6.3 환불 가능 상태
+| 상태 | 환불 가능 여부 | 비고 |
+|------|----------------|------|
+| PAID | ✅ 가능 | 결제 완료 후 환불 가능 |
+| PREPARING | ✅ 가능 | 상품 준비 중 환불 가능 |
+| SHIPPED | ✅ 가능 | 배송 중 반품 후 환불 |
+| DELIVERED | ✅ 가능 | 배송 완료 후 반품 환불 |
+| COMPLETED | ✅ 가능 | 구매 확정 후도 특정 기간 내 환불 |
 
 ## 7. 보상 트랜잭션 패턴
 
@@ -254,23 +300,57 @@ graph TB
     style E1 fill:#ffcdd2
 ```
 
-## 8. 모니터링 포인트
+## 8. 예외 처리 및 재시도 정책
 
-### 8.1 비즈니스 메트릭
+### 8.1 비즈니스 규칙 위반 (재시도 불가)
+- **OrderNotFoundException**: 주문이 존재하지 않음
+- **InvalidOrderStateException**: 잘못된 상태 전이 시도
+- **InsufficientStockException**: 재고 부족
+- **DuplicateOrderException**: 중복 주문
+- **PaymentLimitExceededException**: 결제 한도 초과
+
+이러한 예외들은 재시도해도 동일한 결과가 나오므로 재시도하지 않고 즉시 실패 처리합니다.
+
+### 8.2 기술적 실패 (재시도 가능)
+- **DatabaseConnectionException**: DB 연결 실패
+- **NetworkTimeoutException**: 네트워크 타임아웃
+- **ServiceUnavailableException**: 서비스 일시 중단
+- **OptimisticLockException**: 동시성 충돌
+
+이러한 예외들은 일시적인 문제일 가능성이 높으므로 지수 백오프를 사용하여 재시도합니다.
+
+### 8.3 재시도 정책
+```yaml
+retry:
+  maxAttempts: 3
+  backoff:
+    initialInterval: 1000ms
+    multiplier: 2.0
+    maxInterval: 10000ms
+  retryableExceptions:
+    - DatabaseConnectionException
+    - NetworkTimeoutException
+    - ServiceUnavailableException
+    - OptimisticLockException
+```
+
+## 9. 모니터링 포인트
+
+### 9.1 비즈니스 메트릭
 - 주문 생성률
 - 재고 예약 성공률
 - 결제 성공률
 - 주문 완료율
 - 평균 주문 처리 시간
 
-### 8.2 기술 메트릭
+### 9.2 기술 메트릭
 - 이벤트 처리 지연 시간
 - 이벤트 처리 실패율
 - 서비스 응답 시간
 - 데이터베이스 쿼리 성능
 - 메시지 큐 크기
 
-### 8.3 알림 설정
+### 9.3 알림 설정
 - 재고 예약 실패율 > 10%
 - 결제 실패율 > 5%
 - 이벤트 처리 지연 > 30초

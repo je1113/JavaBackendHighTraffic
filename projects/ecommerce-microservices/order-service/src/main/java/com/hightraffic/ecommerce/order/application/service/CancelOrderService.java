@@ -65,15 +65,19 @@ public class CancelOrderService implements CancelOrderUseCase {
         // 3. 취소 가능한 상태인지 검증
         validateCancellationEligibility(order, command.isCustomerInitiated());
         
-        // 4. 주문 취소
+        // 4. 취소 전 상태 저장
+        OrderStatus previousStatus = order.getStatus();
+        
+        // 5. 주문 취소
         order.cancel(command.getCancellationReason());
         
-        // 5. 변경사항 저장
+        // 6. 변경사항 저장
         Order cancelledOrder = saveOrderPort.saveOrder(order);
         
-        // 6. 도메인 이벤트 생성 및 발행
+        // 7. 도메인 이벤트 생성 및 발행
         OrderCancelledEvent event = createOrderCancelledEvent(
             cancelledOrder, 
+            previousStatus,
             command.getCancellationReason(),
             command.isCustomerInitiated()
         );
@@ -120,12 +124,13 @@ public class CancelOrderService implements CancelOrderUseCase {
      * 이 이벤트는 재고 서비스에서 예약된 재고를 해제하는데 사용됨
      */
     private OrderCancelledEvent createOrderCancelledEvent(Order order, 
+                                                         OrderStatus previousStatus,
                                                          String cancellationReason,
                                                          boolean isCustomerInitiated) {
         return new OrderCancelledEvent(
             order.getOrderId().getValue().toString(),
             order.getCustomerId().getValue().toString(),
-            order.getStatus().name(), // previousStatus
+            previousStatus.name(), // previousStatus
             cancellationReason,
             "STANDARD_CANCELLATION", // cancelReasonCode
             isCustomerInitiated ? order.getCustomerId().getValue().toString() : "SYSTEM", // cancelledBy

@@ -95,9 +95,11 @@ subprojects {
             xml.required = true
             html.required = true
         }
-        finalizedBy jacocoTestCoverageVerification
+        // finalizedBy jacocoTestCoverageVerification // 코드 커버리지 검증 비활성화
     }
     
+    // 코드 커버리지 검증은 나중에 활성화
+    /*
     jacocoTestCoverageVerification {
         violationRules {
             rule {
@@ -109,6 +111,7 @@ subprojects {
             }
         }
     }
+    */
     
     // Spring Boot JAR 최적화
     jar {

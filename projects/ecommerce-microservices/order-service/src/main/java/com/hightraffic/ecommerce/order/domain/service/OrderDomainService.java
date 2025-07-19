@@ -135,9 +135,9 @@ public class OrderDomainService {
             .anyMatch(order -> {
                 List<ProductId> orderProductIds = order.getItems().stream()
                     .map(item -> item.getProductId())
-                    .sorted()
+                    .sorted((p1, p2) -> p1.getValue().compareTo(p2.getValue()))
                     .toList();
-                return orderProductIds.equals(productIds.stream().sorted().toList());
+                return orderProductIds.equals(productIds.stream().sorted((p1, p2) -> p1.getValue().compareTo(p2.getValue())).toList());
             });
     }
     

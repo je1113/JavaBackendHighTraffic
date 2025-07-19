@@ -175,6 +175,16 @@ public class Order implements Serializable {
     }
     
     /**
+     * 배송 준비 처리
+     */
+    public void markAsPreparing() {
+        validateCanPrepare();
+        
+        this.status = OrderStatus.PREPARING;
+        // TODO: 도메인 이벤트 발행 (OrderPreparingEvent)
+    }
+    
+    /**
      * 배송 시작 처리
      */
     public void markAsShipped() {
@@ -209,7 +219,11 @@ public class Order implements Serializable {
      */
     public void addNotes(String additionalNotes) {
         if (additionalNotes != null && !additionalNotes.trim().isEmpty()) {
-            this.notes = (notes != null ? notes + "\n" : "") + additionalNotes.trim();
+            if (notes == null || notes.isEmpty()) {
+                this.notes = additionalNotes.trim();
+            } else {
+                this.notes = notes + "\n" + additionalNotes.trim();
+            }
         }
     }
     
@@ -230,6 +244,16 @@ public class Order implements Serializable {
             throw new IllegalStateException("Only confirmed orders can be marked as payment pending");
         }
         this.status = OrderStatus.PAYMENT_PENDING;
+    }
+    
+    /**
+     * 결제 처리 중 상태로 변경
+     */
+    public void markAsPaymentProcessing() {
+        if (status != OrderStatus.PAYMENT_PENDING) {
+            throw new IllegalStateException("Only payment pending orders can be marked as payment processing");
+        }
+        this.status = OrderStatus.PAYMENT_PROCESSING;
     }
     
     /**
@@ -281,6 +305,12 @@ public class Order implements Serializable {
     private void validateCanPay() {
         if (!status.canTransitionTo(OrderStatus.PAID)) {
             throw new IllegalStateException("현재 상태에서는 결제할 수 없습니다: " + status);
+        }
+    }
+    
+    private void validateCanPrepare() {
+        if (!status.canTransitionTo(OrderStatus.PREPARING)) {
+            throw new IllegalStateException("현재 상태에서는 배송 준비를 시작할 수 없습니다: " + status);
         }
     }
     

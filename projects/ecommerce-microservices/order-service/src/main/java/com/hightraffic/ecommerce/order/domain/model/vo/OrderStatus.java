@@ -95,7 +95,7 @@ public enum OrderStatus {
     
     // 최종 상태들
     private static final Set<OrderStatus> FINAL_STATUSES = Collections.unmodifiableSet(
-        EnumSet.of(COMPLETED, CANCELLED, REFUNDED, FAILED)
+        EnumSet.of(CANCELLED, REFUNDED, FAILED)
     );
     
     OrderStatus(String code, String description, int order) {
