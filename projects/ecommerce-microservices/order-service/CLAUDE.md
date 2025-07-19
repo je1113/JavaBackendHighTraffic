@@ -76,8 +76,56 @@ Implements **Hexagonal Architecture** with Domain-Driven Design:
 # Run tests
 ./gradlew :order-service:test
 
+# Run architecture tests only
+./gradlew :order-service:test --tests "*.ArchitectureTestSuite"
+
 # Database migration
 ./gradlew :order-service:flywayMigrate
+```
+
+## Architecture Tests
+ArchUnit 기반의 자동화된 아키텍처 검증 테스트:
+
+### Test Suites
+- **ArchitectureTestSuite**: 모든 아키텍처 테스트를 한 번에 실행하는 테스트 스위트
+
+### Test Categories
+1. **DomainLayerArchitectureTest**
+   - 도메인 레이어의 순수성 검증
+   - 프레임워크 독립성 확인
+   - 외부 레이어 의존성 차단
+   - Value Object equals/hashCode 구현 검증
+
+2. **HexagonalArchitectureTest**
+   - 포트와 어댑터 패턴 준수 검증
+   - 어댑터가 포트를 통해서만 접근하는지 확인
+   - 인바운드/아웃바운드 포트 분리 검증
+   - JPA 엔티티 캡슐화 확인
+
+3. **PackageStructureTest**
+   - DDD 기반 패키지 구조 검증
+   - 각 계층별 올바른 하위 패키지 구성 확인
+   - 예외 클래스 위치 규칙 검증 (각 계층이 자체 예외 보유 가능)
+
+4. **NamingConventionTest**
+   - 클래스 네이밍 규칙 검증 (Controller, Service, UseCase, Port 등)
+   - JPA 엔티티와 리포지토리 네이밍 규칙
+   - DTO 클래스 접미사 규칙
+   - 상수 네이밍 규칙 (대문자와 밑줄)
+
+### Known Issues
+테스트 실행 시 일부 실패하는 항목들:
+- Value Object의 equals/hashCode 미구현
+- 일부 도메인 클래스의 프레임워크 의존성
+- 내부 클래스로 인한 네이밍 규칙 위반
+
+### 실행 방법
+```bash
+# 특정 테스트만 실행
+./gradlew :order-service:test --tests "*.PackageStructureTest"
+
+# JaCoCo 커버리지 검증 제외하고 실행
+./gradlew :order-service:test -x jacocoTestCoverageVerification
 ```
 
 ## Key Dependencies
@@ -88,3 +136,4 @@ Implements **Hexagonal Architecture** with Domain-Driven Design:
 - PostgreSQL
 - Flyway (database migrations)
 - Micrometer (metrics)
+- ArchUnit (architecture tests)

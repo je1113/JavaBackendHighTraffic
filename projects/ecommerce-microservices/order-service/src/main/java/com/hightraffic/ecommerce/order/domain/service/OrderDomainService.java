@@ -1,15 +1,13 @@
 package com.hightraffic.ecommerce.order.domain.service;
 
-import com.hightraffic.ecommerce.order.config.OrderBusinessRulesConfig;
 import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderId;
 import com.hightraffic.ecommerce.order.domain.model.vo.OrderStatus;
+import com.hightraffic.ecommerce.order.domain.service.OrderPricingPolicy;
 import com.hightraffic.ecommerce.order.domain.repository.OrderRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,18 +16,16 @@ import java.util.List;
 /**
  * 주문 도메인 서비스
  * 여러 Aggregate 간의 협력이나 복잡한 비즈니스 규칙을 처리
- * 설정 기반으로 비즈니스 규칙을 유연하게 관리
+ * 정책 인터페이스를 통해 비즈니스 규칙을 유연하게 관리
  */
-@Service
-@Transactional(readOnly = true)
 public class OrderDomainService {
     
     private final OrderRepository orderRepository;
-    private final OrderBusinessRulesConfig config;
+    private final OrderPricingPolicy pricingPolicy;
     
-    public OrderDomainService(OrderRepository orderRepository, OrderBusinessRulesConfig config) {
+    public OrderDomainService(OrderRepository orderRepository, OrderPricingPolicy pricingPolicy) {
         this.orderRepository = orderRepository;
-        this.config = config;
+        this.pricingPolicy = pricingPolicy;
     }
     
     
@@ -39,7 +35,7 @@ public class OrderDomainService {
      */
     public boolean isHighValueOrder(Order order) {
         return order.getTotalAmount().getAmount()
-            .compareTo(config.getPricing().getVipThreshold()) >= 0;
+            .compareTo(pricingPolicy.getVipThreshold()) >= 0;
     }
     
     /**
@@ -61,7 +57,6 @@ public class OrderDomainService {
      * 주문 병합 실행
      * 두 개의 주문을 하나로 병합
      */
-    @Transactional
     public Order mergeOrders(Order targetOrder, Order sourceOrder) {
         if (!canMergeOrders(targetOrder, sourceOrder)) {
             throw new IllegalStateException("주문을 병합할 수 없습니다");

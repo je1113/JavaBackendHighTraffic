@@ -1,12 +1,11 @@
 package com.hightraffic.ecommerce.order.domain.service;
 
-import com.hightraffic.ecommerce.order.config.OrderBusinessRulesConfig;
 import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.OrderItem;
 import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
+import com.hightraffic.ecommerce.order.domain.service.OrderPricingPolicy;
 import com.hightraffic.ecommerce.order.domain.repository.OrderRepository;
-import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,17 +16,16 @@ import java.util.List;
 /**
  * 주문 가격 계산 도메인 서비스
  * 할인, 쿠폰, 포인트 등 복잡한 가격 계산 로직을 담당
- * 설정 기반으로 가격 정책을 유연하게 관리
+ * 정책 인터페이스를 통해 가격 정책을 유연하게 관리
  */
-@Service
 public class OrderPricingService {
     
     private final OrderRepository orderRepository;
-    private final OrderBusinessRulesConfig config;
+    private final OrderPricingPolicy pricingPolicy;
     
-    public OrderPricingService(OrderRepository orderRepository, OrderBusinessRulesConfig config) {
+    public OrderPricingService(OrderRepository orderRepository, OrderPricingPolicy pricingPolicy) {
         this.orderRepository = orderRepository;
-        this.config = config;
+        this.pricingPolicy = pricingPolicy;
     }
     
     /**
@@ -61,8 +59,8 @@ public class OrderPricingService {
      */
     private void applyBulkDiscount(Order order, PricingResult result) {
         Money bulkDiscountAmount = Money.ZERO("KRW");
-        int threshold = config.getPricing().getBulkDiscountThreshold();
-        BigDecimal discountRate = config.getPricing().getBulkDiscountRate();
+        int threshold = pricingPolicy.getBulkDiscountThreshold();
+        BigDecimal discountRate = pricingPolicy.getBulkDiscountRate();
         
         for (OrderItem item : order.getItems()) {
             if (item.getQuantity() >= threshold) {
@@ -83,7 +81,7 @@ public class OrderPricingService {
     private void applyVipDiscount(Order order, PricingResult result) {
         if (isVipCustomer(order.getCustomerId())) {
             Money vipDiscountAmount = order.getTotalAmount()
-                .multiply(config.getPricing().getVipDiscountRate());
+                .multiply(pricingPolicy.getVipDiscountRate());
             result.addDiscount("VIP할인", vipDiscountAmount);
         }
     }
@@ -99,9 +97,9 @@ public class OrderPricingService {
             sixMonthsAgo
         );
         
-        if (completedOrderCount >= config.getPricing().getLoyaltyOrderThreshold()) {
+        if (completedOrderCount >= pricingPolicy.getLoyaltyOrderThreshold()) {
             Money loyaltyDiscountAmount = order.getTotalAmount()
-                .multiply(config.getPricing().getLoyaltyDiscountRate());
+                .multiply(pricingPolicy.getLoyaltyDiscountRate());
             result.addDiscount("단골고객할인", loyaltyDiscountAmount);
         }
     }
@@ -111,14 +109,14 @@ public class OrderPricingService {
      * 주말 주문 시 설정된 할증율 적용
      */
     private void applyWeekendSurcharge(Order order, PricingResult result) {
-        if (!config.getPricing().isEnableWeekendSurcharge()) {
+        if (!pricingPolicy.isEnableWeekendSurcharge()) {
             return;
         }
         
         LocalDate today = LocalDate.now();
         if (today.getDayOfWeek().getValue() >= 6) { // 토요일(6), 일요일(7)
             Money surchargeAmount = order.getTotalAmount()
-                .multiply(config.getPricing().getWeekendSurchargeRate());
+                .multiply(pricingPolicy.getWeekendSurchargeRate());
             result.addSurcharge("주말할증", surchargeAmount);
         }
     }
@@ -128,9 +126,9 @@ public class OrderPricingService {
      * 주문 금액에 따른 무료 배송 정책 적용
      */
     private void calculateShippingFee(Order order, PricingResult result) {
-        Money freeShippingThreshold = new Money(config.getPricing().getFreeShippingThreshold(), "KRW");
-        Money standardShippingFee = new Money(config.getPricing().getStandardShippingFee(), "KRW");
-        Money expressShippingFee = new Money(config.getPricing().getExpressShippingFee(), "KRW");
+        Money freeShippingThreshold = new Money(pricingPolicy.getFreeShippingThreshold(), "KRW");
+        Money standardShippingFee = new Money(pricingPolicy.getStandardShippingFee(), "KRW");
+        Money expressShippingFee = new Money(pricingPolicy.getExpressShippingFee(), "KRW");
         
         // 기본 배송비 계산
         if (order.getTotalAmount().isLessThan(freeShippingThreshold)) {
@@ -236,7 +234,7 @@ public class OrderPricingService {
     
     private boolean isVipCustomer(CustomerId customerId) {
         // VIP 고객 판단 로직 (설정된 금액 이상)
-        Money vipThreshold = new Money(config.getPricing().getVipThreshold(), "KRW");
+        Money vipThreshold = new Money(pricingPolicy.getVipThreshold(), "KRW");
         Money totalPurchaseAmount = orderRepository.calculateTotalPurchaseAmount(customerId);
         return totalPurchaseAmount.isGreaterThanOrEqual(vipThreshold);
     }

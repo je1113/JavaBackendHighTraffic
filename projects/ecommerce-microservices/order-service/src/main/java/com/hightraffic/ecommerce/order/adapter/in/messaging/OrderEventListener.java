@@ -3,8 +3,8 @@ package com.hightraffic.ecommerce.order.adapter.in.messaging;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hightraffic.ecommerce.order.adapter.in.messaging.dto.*;
-import com.hightraffic.ecommerce.order.application.handler.PaymentCompletedEventHandler;
-import com.hightraffic.ecommerce.order.application.handler.StockReservedEventHandler;
+import com.hightraffic.ecommerce.order.application.port.in.HandlePaymentCompletedEventUseCase;
+import com.hightraffic.ecommerce.order.application.port.in.HandleStockReservedEventUseCase;
 import com.hightraffic.ecommerce.common.event.inventory.StockReservedEvent;
 import com.hightraffic.ecommerce.common.event.payment.PaymentCompletedEvent;
 import java.util.stream.Collectors;
@@ -33,15 +33,15 @@ public class OrderEventListener {
     
     private static final Logger log = LoggerFactory.getLogger(OrderEventListener.class);
     
-    private final StockReservedEventHandler stockReservedEventHandler;
-    private final PaymentCompletedEventHandler paymentCompletedEventHandler;
+    private final HandleStockReservedEventUseCase handleStockReservedEventUseCase;
+    private final HandlePaymentCompletedEventUseCase handlePaymentCompletedEventUseCase;
     private final ObjectMapper objectMapper;
     
-    public OrderEventListener(StockReservedEventHandler stockReservedEventHandler,
-                            PaymentCompletedEventHandler paymentCompletedEventHandler,
+    public OrderEventListener(HandleStockReservedEventUseCase handleStockReservedEventUseCase,
+                            HandlePaymentCompletedEventUseCase handlePaymentCompletedEventUseCase,
                             ObjectMapper objectMapper) {
-        this.stockReservedEventHandler = stockReservedEventHandler;
-        this.paymentCompletedEventHandler = paymentCompletedEventHandler;
+        this.handleStockReservedEventUseCase = handleStockReservedEventUseCase;
+        this.handlePaymentCompletedEventUseCase = handlePaymentCompletedEventUseCase;
         this.objectMapper = objectMapper;
     }
     
@@ -78,7 +78,7 @@ public class OrderEventListener {
             validateStockReservedEvent(eventMessage);
             
             // 이벤트 핸들러 호출
-            stockReservedEventHandler.handle(mapToEvent(eventMessage));
+            handleStockReservedEventUseCase.handle(mapToEvent(eventMessage));
             
             // 수동 커밋
             acknowledgment.acknowledge();
@@ -182,7 +182,7 @@ public class OrderEventListener {
             validatePaymentCompletedEvent(eventMessage);
             
             // 이벤트 핸들러 호출
-            paymentCompletedEventHandler.handle(mapToEvent(eventMessage));
+            handlePaymentCompletedEventUseCase.handle(mapToEvent(eventMessage));
             
             // 수동 커밋
             acknowledgment.acknowledge();

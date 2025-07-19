@@ -2,6 +2,7 @@ package com.hightraffic.ecommerce.order.application.handler;
 
 import com.hightraffic.ecommerce.common.event.order.OrderPaidEvent;
 import com.hightraffic.ecommerce.common.event.payment.PaymentCompletedEvent;
+import com.hightraffic.ecommerce.order.application.port.in.HandlePaymentCompletedEventUseCase;
 import com.hightraffic.ecommerce.order.application.port.out.LoadOrderPort;
 import com.hightraffic.ecommerce.order.application.port.out.PublishEventPort;
 import com.hightraffic.ecommerce.order.application.port.out.SaveOrderPort;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
  */
 @Component
 @Transactional
-public class PaymentCompletedEventHandler {
+public class PaymentCompletedEventHandler implements HandlePaymentCompletedEventUseCase {
     
     private static final Logger log = LoggerFactory.getLogger(PaymentCompletedEventHandler.class);
     

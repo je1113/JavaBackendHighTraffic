@@ -48,10 +48,6 @@ graph TB
     UC --> MQ
     UC --> EXT
     
-    style ENT fill:#e1f5fe
-    style UC fill:#f3e5f5
-    style WEB fill:#fff3e0
-    style DB fill:#e8f5e8
 ```
 
 ---
@@ -348,6 +344,7 @@ graph TB
   - 어댑터가 포트를 통해서만 접근하는지 검증
 - [x] **7.1.1.2** 패키지 구조 검증 테스트 (1시간)
 - [x] **7.1.1.3** 네이밍 규칙 검증 테스트 (1시간)
+- [x] **7.1.1.4** inventory -> order
 
 #### 7.1.2 헥사고날 아키텍처 컴플라이언스 (3시간)
 - [ ] **7.1.2.1** 포트와 어댑터 구조 검증 (1시간 30분)

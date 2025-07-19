@@ -100,8 +100,8 @@ public interface PaymentProcessingPort {
     /**
      * 결제 상세 정보 (카드 정보 등)
      */
-    interface PaymentDetails {
-        // 마커 인터페이스, 구체적인 구현은 어댑터에서
+    abstract class PaymentDetails {
+        // 추상 클래스로 변경, 구체적인 구현은 어댑터에서
     }
     
     /**

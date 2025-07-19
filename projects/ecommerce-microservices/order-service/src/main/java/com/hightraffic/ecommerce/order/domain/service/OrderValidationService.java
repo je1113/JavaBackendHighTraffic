@@ -1,13 +1,12 @@
 package com.hightraffic.ecommerce.order.domain.service;
 
-import com.hightraffic.ecommerce.order.config.OrderBusinessRulesConfig;
 import com.hightraffic.ecommerce.order.domain.model.Order;
 import com.hightraffic.ecommerce.order.domain.model.OrderItem;
 import com.hightraffic.ecommerce.order.domain.model.vo.ProductId;
 import com.hightraffic.ecommerce.order.domain.model.vo.CustomerId;
 import com.hightraffic.ecommerce.order.domain.model.vo.Money;
+import com.hightraffic.ecommerce.order.domain.service.OrderTimePolicy;
 import com.hightraffic.ecommerce.order.domain.repository.OrderRepository;
-import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,17 +17,16 @@ import java.util.stream.Collectors;
 /**
  * 주문 검증 도메인 서비스
  * 주문과 관련된 복잡한 검증 로직을 담당
- * 설정 기반으로 검증 규칙을 유연하게 관리
+ * 정책 인터페이스를 통해 검증 규칙을 유연하게 관리
  */
-@Service
 public class OrderValidationService {
     
     private final OrderRepository orderRepository;
-    private final OrderBusinessRulesConfig config;
+    private final OrderTimePolicy timePolicy;
     
-    public OrderValidationService(OrderRepository orderRepository, OrderBusinessRulesConfig config) {
+    public OrderValidationService(OrderRepository orderRepository, OrderTimePolicy timePolicy) {
         this.orderRepository = orderRepository;
-        this.config = config;
+        this.timePolicy = timePolicy;
     }
     
     
@@ -38,7 +36,7 @@ public class OrderValidationService {
      * 짧은 시간 내 동일한 주문 방지
      */
     public void validateDuplicateOrder(CustomerId customerId, List<OrderItem> items) {
-        int preventionMinutes = config.getTime().getDuplicateOrderPreventionMinutes();
+        int preventionMinutes = timePolicy.getDuplicateOrderPreventionMinutes();
         LocalDateTime preventionTime = LocalDateTime.now().minusMinutes(preventionMinutes);
         
         List<Order> recentOrders = orderRepository.findByCustomerIdAndCreatedAtAfter(
@@ -65,7 +63,7 @@ public class OrderValidationService {
         }
         
         // 설정된 시간이 지났는지 확인
-        int cancellationHours = config.getTime().getOrderCancellationHours();
+        int cancellationHours = timePolicy.getOrderCancellationHours();
         LocalDateTime limitTime = LocalDateTime.now().minusHours(cancellationHours);
         if (order.getCreatedAt().isBefore(limitTime)) {
             return false;
@@ -103,7 +101,7 @@ public class OrderValidationService {
      * 중복 주문 여부 확인
      */
     public boolean isDuplicateOrder(CustomerId customerId, List<ProductId> productIds, LocalDateTime timeWindow) {
-        int preventionMinutes = config.getTime().getDuplicateOrderPreventionMinutes();
+        int preventionMinutes = timePolicy.getDuplicateOrderPreventionMinutes();
         LocalDateTime preventionTime = LocalDateTime.now().minusMinutes(preventionMinutes);
         
         List<Order> recentOrders = orderRepository.findByCustomerIdAndCreatedAtAfter(

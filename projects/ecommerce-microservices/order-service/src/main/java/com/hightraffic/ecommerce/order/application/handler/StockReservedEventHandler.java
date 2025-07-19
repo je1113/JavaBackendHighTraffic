@@ -1,6 +1,7 @@
 package com.hightraffic.ecommerce.order.application.handler;
 
 import com.hightraffic.ecommerce.common.event.inventory.StockReservedEvent;
+import com.hightraffic.ecommerce.order.application.port.in.HandleStockReservedEventUseCase;
 import com.hightraffic.ecommerce.order.application.port.out.LoadOrderPort;
 import com.hightraffic.ecommerce.order.application.port.out.PaymentProcessingPort;
 import com.hightraffic.ecommerce.order.application.port.out.PublishEventPort;
@@ -27,7 +28,7 @@ import java.util.UUID;
  */
 @Component
 @Transactional
-public class StockReservedEventHandler {
+public class StockReservedEventHandler implements HandleStockReservedEventUseCase {
     
     private static final Logger log = LoggerFactory.getLogger(StockReservedEventHandler.class);
     
