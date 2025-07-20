@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: inventory-service
+  
+  datasource:
+    url: jdbc:tc:postgresql:15:///inventory_service
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    username: test
+    password: test
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: false
+        jdbc:
+          batch_size: 25
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+  
+  flyway:
+    enabled: false
+  
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 5
+          max-idle: 5
+          min-idle: 1
+  
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: com.hightraffic.ecommerce.common.adapter.out.kafka.EventSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: inventory-service-test
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+cache:
+  product:
+    ttl: 1m
+  stock:
+    ttl: 30s
+  redis:
+    key-prefix: test:inventory
+
+inventory:
+  stock:
+    reservation:
+      default-timeout: 5m
+    low-stock:
+      threshold: 10
+  cache:
+    warming:
+      enabled: false
+
+logging:
+  level:
+    com.hightraffic.ecommerce.inventory: DEBUG
+    org.springframework.orm.jpa: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.transaction: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

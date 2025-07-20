@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: order-service
+  
+  datasource:
+    url: jdbc:tc:postgresql:15:///order_service
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    username: test
+    password: test
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: false
+        jdbc:
+          batch_size: 25
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+  
+  flyway:
+    enabled: false
+  
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: com.hightraffic.ecommerce.common.adapter.out.kafka.EventSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: order-service-test
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+order:
+  business-rules:
+    max-items-per-order: 100
+    duplicate-order-window: 5m
+    order-cancellation-window: 24h
+    vip-discount-threshold: 1000000
+    vip-discount-rate: 0.1
+    bulk-discount-threshold: 10
+    bulk-discount-rate: 0.05
+  time-policy:
+    order-timeout: 30m
+    payment-timeout: 10m
+  pricing-policy:
+    tax-rate: 0.1
+    shipping-fee: 5000
+
+payment:
+  gateway:
+    url: http://localhost:8080
+    timeout: 5s
+    max-retries: 3
+    async: false
+
+stock-validation:
+  service:
+    url: http://localhost:8080
+    timeout: 3s
+
+logging:
+  level:
+    com.hightraffic.ecommerce.order: DEBUG
+    org.springframework.orm.jpa: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.transaction: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

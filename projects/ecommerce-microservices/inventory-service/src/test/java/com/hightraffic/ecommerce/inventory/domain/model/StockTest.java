@@ -481,26 +481,33 @@ class StockTest {
     class ExpiredReservationHandling {
         
         @Test
-        @DisplayName("만료된 모든 예약 정리")
-        void cleanupExpiredReservations_RemovesExpiredReservations() {
-            // given - 테스트를 위해 만료된 예약을 가진 StockReservation 생성
-            // StockReservation의 생성자나 메서드를 확인해야 함
-            // 이 테스트는 StockReservation 클래스의 구현에 따라 다를 수 있음
-            
-            // 현재는 만료 처리 로직만 검증
+        @DisplayName("만료되지 않은 예약은 정리되지 않음")
+        void cleanupExpiredReservations_DoesNotRemoveValidReservations() {
+            // given - 유효한 예약 생성
             ReservationId id1 = ReservationId.generate();
+            ReservationId id2 = ReservationId.generate();
             stock.reserveStock(id1, StockQuantity.of(30));
+            stock.reserveStock(id2, StockQuantity.of(20));
             
             int beforeCount = stock.getReservationCount();
-            LocalDateTime beforeModified = stock.getLastModifiedAt();
+            StockQuantity beforeAvailable = stock.getAvailableQuantity();
+            StockQuantity beforeReserved = stock.getReservedQuantity();
             
             // when
             stock.cleanupExpiredReservations();
             
-            // then - 만료된 예약이 없으면 상태 변경 없음
-            // 실제 만료 테스트는 StockReservation의 구현에 따라 달라짐
-            assertThat(stock.getLastModifiedAt()).isAfter(beforeModified);
+            // then - 만료되지 않은 예약은 그대로 유지
+            assertThat(stock.getReservationCount()).isEqualTo(beforeCount);
+            assertThat(stock.getAvailableQuantity()).isEqualTo(beforeAvailable);
+            assertThat(stock.getReservedQuantity()).isEqualTo(beforeReserved);
+            
+            // 예약이 여전히 존재하는지 확인
+            assertThat(stock.getReservation(id1)).isNotNull();
+            assertThat(stock.getReservation(id2)).isNotNull();
         }
+        
+        // 만료된 예약 정리 테스트는 StockReservation의 시간 제어가 가능해질 때 추가
+        // 현재 구조에서는 LocalDateTime.now()를 직접 사용하므로 테스트 불가능
     }
     
     @Nested
