@@ -142,16 +142,16 @@ public class Product {
         );
         
         addDomainEvent(new StockReleasedEvent(
-            productId.getValue().toString(),
-            reservationId.getValue().toString(),
-            orderId,
-            "", // customerId - 기본값
-            "ORDER_CANCELLED",
-            releasedItems,
-            "Order cancellation",
-            "SYSTEM",
-            true, // isFullyReleased
-            java.time.Instant.now()
+            productId.getValue().toString(),  // inventoryId
+            reservationId.getValue().toString(),  // reservationId
+            orderId,  // orderId
+            "ORDER_CANCELLED",  // releaseReason
+            "ORDER_CANCELLED",  // releaseReasonCode
+            releasedItems,  // releasedItems
+            "SYSTEM",  // releasedBy
+            "SYSTEM",  // releasedByType
+            false,  // compensationRequired
+            java.time.Instant.now()  // originalReservationTime
         ));
     }
     

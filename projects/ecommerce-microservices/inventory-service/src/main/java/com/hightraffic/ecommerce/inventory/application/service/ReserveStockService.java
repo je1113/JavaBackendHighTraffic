@@ -105,7 +105,7 @@ public class ReserveStockService implements ReserveStockUseCase {
                     ReservationResult reservationResult = reserveStock(reserveCommand);
                     ReservationId reservationId = reservationResult.getReservationId();
                     successfulReservations.add(reservationId);
-                    results.add(new ReservationResult(item.getProductId(), "SUCCESS"));
+                    results.add(reservationResult);
                     
                 } catch (Exception e) {
                     log.error("Failed to reserve stock for product: {}", item.getProductId(), e);
