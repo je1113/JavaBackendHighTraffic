@@ -1,0 +1,57 @@
+plugins {
+    id 'java'
+    id 'io.gatling.gradle' version '3.9.5.6'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.hightraffic.ecommerce'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    
+    // HTTP Client
+    implementation 'org.apache.httpcomponents:httpclient:4.5.14'
+    implementation 'org.apache.httpcomponents:httpasyncclient:4.1.5'
+    
+    // JSON Processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    
+    // Gatling
+    gatling 'io.gatling.highcharts:gatling-charts-highcharts:3.9.5'
+    
+    // Logging
+    implementation 'ch.qos.logback:logback-classic'
+    
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.projectreactor:reactor-test'
+    
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+
+gatling {
+    // Gatling configuration
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Custom task for running load test
+task runLoadTest(type: JavaExec) {
+    mainClass = 'com.hightraffic.ecommerce.loadtest.StockReservationLoadTest'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = ['-Xms1g', '-Xmx2g']
+}

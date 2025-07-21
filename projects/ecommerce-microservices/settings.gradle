@@ -16,12 +16,16 @@ include 'api-gateway'
 include 'order-service'
 include 'inventory-service'
 
+// Testing modules
+include 'load-test'
+
 // 프로젝트 디스크립션 설정
 project(':common').projectDir = file('common')
 project(':service-discovery').projectDir = file('service-discovery')
 project(':api-gateway').projectDir = file('api-gateway')
 project(':order-service').projectDir = file('order-service')
 project(':inventory-service').projectDir = file('inventory-service')
+project(':load-test').projectDir = file('load-test')
 
 // Dependency Resolution Strategy
 dependencyResolutionManagement {

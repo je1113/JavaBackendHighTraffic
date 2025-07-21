@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: load-test
+  main:
+    web-application-type: none  # 웹 서버 비활성화
+    
+logging:
+  level:
+    com.hightraffic.ecommerce.loadtest: INFO
+    reactor.netty: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# 부하 테스트 설정
+load-test:
+  target:
+    inventory-service-url: http://localhost:8082
+    order-service-url: http://localhost:8081
+  
+  scenario:
+    product-id: 550e8400-e29b-41d4-a716-446655440001
+    initial-stock: 100
+    total-requests: 5000
+    test-duration-seconds: 1
+    concurrent-users: 5000
+  
+  reporting:
+    show-progress: true
+    print-interval-ms: 100
+    export-results: true
+    results-file: build/load-test-results.json

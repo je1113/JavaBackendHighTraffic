@@ -243,3 +243,14 @@ grafana-data/
 # Application runtime data
 data/
 runtime/
+
+# Process ID files
+*.pid
+
+# Service logs
+service-discovery.log
+order-service.log
+inventory-service.log
+api-gateway.log
+mock-server.log
+mock_server.log

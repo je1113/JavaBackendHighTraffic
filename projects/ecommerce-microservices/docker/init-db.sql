@@ -3,12 +3,12 @@
 
 -- Order Service Database
 CREATE DATABASE order_service;
-CREATE USER order_user WITH ENCRYPTED PASSWORD 'order_password123!';
+CREATE USER order_user WITH ENCRYPTED PASSWORD 'order_pass123!';
 GRANT ALL PRIVILEGES ON DATABASE order_service TO order_user;
 
 -- Inventory Service Database  
 CREATE DATABASE inventory_service;
-CREATE USER inventory_user WITH ENCRYPTED PASSWORD 'inventory_password123!';
+CREATE USER inventory_user WITH ENCRYPTED PASSWORD 'inventory_pass123!';
 GRANT ALL PRIVILEGES ON DATABASE inventory_service TO inventory_user;
 
 -- Connect to order_service database

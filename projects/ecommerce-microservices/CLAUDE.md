@@ -51,26 +51,43 @@ A high-traffic e-commerce microservices system built with Java 17 and Spring Boo
 - Git
 
 ### Quick Start
+
+#### 방법 1: Docker Compose (권장)
 ```bash
 # Clone repository
 git clone <repository-url>
 cd ecommerce-microservices
 
-# Copy environment template
-cp .env.example .env
-
-# Start infrastructure
-./docker/start-infrastructure.sh
-
 # Build all services
 ./gradlew clean build
 
-# Run individual services
-./gradlew :inventory-service:bootRun
-./gradlew :order-service:bootRun
-./gradlew :api-gateway:bootRun
-./gradlew :service-discovery:bootRun
+# Start all services with Docker Compose
+./docker-start.sh
+
+# 또는 개별적으로 실행
+docker-compose up -d
 ```
+
+#### 방법 2: 로컬 실행
+```bash
+# Infrastructure services must be running first
+docker-compose up -d postgres redis kafka zookeeper
+
+# Run individual services
+./gradlew :service-discovery:bootRun
+./gradlew :order-service:bootRun
+./gradlew :inventory-service:bootRun
+./gradlew :api-gateway:bootRun
+```
+
+### Service URLs
+- **API Gateway**: http://localhost:8888 (changed from 8080)
+- **Order Service**: http://localhost:8081
+- **Inventory Service**: http://localhost:8082
+- **Service Discovery**: http://localhost:8761
+- **Kafka UI**: http://localhost:8090
+- **Grafana**: http://localhost:3000 (admin/admin123!)
+- **Prometheus**: http://localhost:9090
 
 ### Testing Commands
 ```bash
@@ -82,6 +99,30 @@ cp .env.example .env
 
 # Run integration tests
 ./gradlew integrationTest
+
+# Run load tests
+cd load-test
+./gradlew runLoadTest
+```
+
+### Load Testing
+부하 테스트 모듈이 `/load-test` 디렉토리에 구성되어 있습니다.
+
+#### 주요 테스트 시나리오
+- **재고 동시성 테스트**: 100개 재고에 5,000개 동시 주문
+- **API Gateway 부하 테스트**: 분산 환경에서의 라우팅 성능
+- **이벤트 처리 테스트**: Kafka 메시지 처리량 측정
+
+#### 테스트 실행 방법
+```bash
+# Mock 서버로 간단한 테스트
+cd load-test
+python3 mock_server.py &
+./gradlew runLoadTest
+
+# Docker Compose 환경에서 통합 테스트
+docker-compose up -d
+k6 run load-test/k6-script.js
 ```
 
 ## 🏛️ Service Architecture Details
@@ -248,31 +289,55 @@ Configuration highlights:
 
 ### Docker Services
 ```yaml
-Services:
-- PostgreSQL 15 (2 databases)
-- Redis 7.2 (caching & locking)
-- Kafka & Zookeeper (messaging)
+Infrastructure Services:
+- PostgreSQL 15 (2 databases: order_service, inventory_service)
+- Redis 7.2 (caching & distributed locking)
+- Kafka & Zookeeper (event streaming)
 - MongoDB 6 (event store)
 - Prometheus & Grafana (monitoring)
-- Zipkin (tracing)
+- Zipkin (distributed tracing)
 - Kafka UI (management)
+
+Microservices:
+- Service Discovery (Eureka) - port 8761
+- API Gateway - port 8888
+- Order Service - port 8081
+- Inventory Service - port 8082
 ```
 
-### Infrastructure Commands
+### Docker Compose Commands
 ```bash
-# Start all infrastructure
-./docker/start-infrastructure.sh
+# Start all services (infrastructure + microservices)
+./docker-start.sh
+
+# Start only infrastructure
+docker-compose up -d postgres redis kafka zookeeper
+
+# Start specific services
+docker-compose up -d order-service inventory-service
 
 # Stop all services
 docker-compose down
 
+# Stop and remove volumes (clean start)
+docker-compose down -v
+
 # View logs
 docker-compose logs -f [service-name]
 
-# Access services
-# Kafka UI: http://localhost:8090
-# Grafana: http://localhost:3000
-# Zipkin: http://localhost:9411
+# Monitor resource usage
+docker stats
+```
+
+### Service Health Check
+```bash
+# Check all services status
+docker-compose ps
+
+# Check specific service health
+curl http://localhost:8888/actuator/health  # API Gateway
+curl http://localhost:8081/actuator/health  # Order Service
+curl http://localhost:8082/actuator/health  # Inventory Service
 ```
 
 ## 📚 Documentation Structure
@@ -282,12 +347,21 @@ docker-compose logs -f [service-name]
 - `/order-service/CLAUDE.md`: Order service details
 - `/api-gateway/CLAUDE.md`: Gateway configuration
 - `/service-discovery/CLAUDE.md`: Discovery service setup
+- `/load-test/README.md`: Load testing guide
 
 ### Architecture Documentation
 - `/docs/DDD-*.md`: Domain-Driven Design concepts
 - `/docs/Event-Publishing-Architecture.md`: Event flow details
 - `/docs/*-Persistence-*.md`: Database design patterns
 - `/docs/Kafka-Guide.md`: Kafka setup and usage
+
+### Testing & Monitoring Documentation
+- `/docs/Load-Test-Results.md`: 부하 테스트 결과 분석
+- `/docs/Docker-Compose-Monitoring-Guide.md`: 모니터링 가이드
+- `/docs/7.1.Architecture-Testing-Guide.md`: 아키텍처 테스트
+
+### Work Logs
+- `/docs/2025-07-21-작업내역.md`: Latest development activities
 
 ## 🧪 Testing Strategy
 
