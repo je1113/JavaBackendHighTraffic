@@ -1,0 +1,2 @@
+# Ensure Gradle wrapper jar is included in the repository
+gradle/wrapper/gradle-wrapper.jar binary
