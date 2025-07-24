@@ -4,14 +4,18 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    paths:
+      - 'projects/ecommerce-microservices/**'
+      - '.github/workflows/deploy-oci.yml'
     paths-ignore:
-      - 'docs/**'
+      - '**/docs/**'
       - '**.md'
       - '.gitignore'
 
 env:
   JAVA_VERSION: '17'
   DOCKER_REGISTRY: docker.io
+  WORKING_DIRECTORY: projects/ecommerce-microservices
 
 jobs:
   deploy:
@@ -29,9 +33,11 @@ jobs:
         cache: gradle
 
     - name: Grant execute permission for gradlew
+      working-directory: ${{ env.WORKING_DIRECTORY }}
       run: chmod +x gradlew
 
     - name: Build all services
+      working-directory: ${{ env.WORKING_DIRECTORY }}
       run: ./gradlew clean build -x test
 
     - name: Set up Docker Buildx
@@ -61,7 +67,7 @@ jobs:
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
             --build-arg JAR_FILE=build/libs/${service}-1.0.0-boot.jar \
-            ./${service}
+            ${{ env.WORKING_DIRECTORY }}/${service}
         done
 
     - name: Copy files to OCI instance
@@ -71,9 +77,9 @@ jobs:
         username: ${{ secrets.OCI_USERNAME }}
         key: ${{ secrets.OCI_SSH_KEY }}
         source: |
-          docker-compose.prod.yml
-          scripts/deploy-oci.sh
-          .env.production
+          ${{ env.WORKING_DIRECTORY }}/docker-compose.prod.yml
+          ${{ env.WORKING_DIRECTORY }}/scripts/deploy-oci.sh
+          ${{ env.WORKING_DIRECTORY }}/.env.production
         target: ~/ecommerce-app
         strip_components: 0
 

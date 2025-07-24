@@ -3,12 +3,19 @@ name: CI Pipeline
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'projects/ecommerce-microservices/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'projects/ecommerce-microservices/**'
+      - '.github/workflows/ci.yml'
 
 env:
   JAVA_VERSION: '17'
   GRADLE_VERSION: '8.5'
+  WORKING_DIRECTORY: projects/ecommerce-microservices
 
 jobs:
   build-and-test:
@@ -51,12 +58,15 @@ jobs:
         cache: gradle
 
     - name: Grant execute permission for gradlew
+      working-directory: ${{ env.WORKING_DIRECTORY }}
       run: chmod +x gradlew
 
     - name: Build with Gradle
+      working-directory: ${{ env.WORKING_DIRECTORY }}
       run: ./gradlew clean build -x test
 
     - name: Run tests
+      working-directory: ${{ env.WORKING_DIRECTORY }}
       run: ./gradlew test
       env:
         SPRING_PROFILES_ACTIVE: test
@@ -72,8 +82,8 @@ jobs:
       with:
         name: test-results
         path: |
-          **/build/test-results/test/
-          **/build/reports/tests/test/
+          ${{ env.WORKING_DIRECTORY }}/**/build/test-results/test/
+          ${{ env.WORKING_DIRECTORY }}/**/build/reports/tests/test/
         retention-days: 7
 
   docker-build:
@@ -97,9 +107,11 @@ jobs:
         cache: gradle
 
     - name: Grant execute permission for gradlew
+      working-directory: ${{ env.WORKING_DIRECTORY }}
       run: chmod +x gradlew
 
     - name: Build service
+      working-directory: ${{ env.WORKING_DIRECTORY }}
       run: ./gradlew :${{ matrix.service }}:build -x test
 
     - name: Set up Docker Buildx
@@ -124,7 +136,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./${{ matrix.service }}
+        context: ${{ env.WORKING_DIRECTORY }}/${{ matrix.service }}
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
