@@ -61,6 +61,10 @@ jobs:
       with:
         gradle-version: wrapper
 
+    - name: Grant execute permission for gradlew
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: chmod +x gradlew
+
     - name: Build with Gradle
       working-directory: ${{ env.WORKING_DIRECTORY }}
       run: ./gradlew clean build -x test --no-daemon
@@ -109,6 +113,10 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: wrapper
+
+    - name: Grant execute permission for gradlew
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: chmod +x gradlew
 
     - name: Build service
       working-directory: ${{ env.WORKING_DIRECTORY }}
