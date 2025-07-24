@@ -88,6 +88,8 @@ docker-compose.override.yml
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+*.env
 application-local.yml
 application-local.yaml
 application-local.properties

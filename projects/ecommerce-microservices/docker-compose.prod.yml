@@ -1,0 +1,265 @@
+version: '3.8'
+
+# Production Docker Compose for OCI Free Tier (1 OCPU, 1GB RAM)
+# Optimized for minimal resource usage
+
+services:
+  # PostgreSQL - Single instance for all services to save resources
+  postgres:
+    image: postgres:15-alpine
+    container_name: ecommerce-postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis - Essential for caching and distributed locking
+  redis:
+    image: redis:7.2-alpine
+    container_name: ecommerce-redis
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kafka - Lightweight single-node setup
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ecommerce-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # Kraft mode (no Zookeeper needed)
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      # Resource optimizations
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_LOG_SEGMENT_BYTES: 52428800
+      KAFKA_NUM_PARTITIONS: 2
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 350M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Service Discovery
+  service-discovery:
+    image: ${DOCKER_USERNAME}/ecommerce-service-discovery:latest
+    container_name: ecommerce-service-discovery
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,prod
+      - JAVA_OPTS=-Xms128m -Xmx128m -XX:+UseG1GC -XX:MaxGCPauseMillis=100
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway
+  api-gateway:
+    image: ${DOCKER_USERNAME}/ecommerce-api-gateway:latest
+    container_name: ecommerce-api-gateway
+    ports:
+      - "8888:8080"
+      - "80:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,prod
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery:8761/eureka/
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JAVA_OPTS=-Xms128m -Xmx192m -XX:+UseG1GC -XX:MaxGCPauseMillis=100
+    depends_on:
+      service-discovery:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+        reservations:
+          memory: 192M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Order Service
+  order-service:
+    image: ${DOCKER_USERNAME}/ecommerce-order-service:latest
+    container_name: ecommerce-order-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,prod
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_service
+      - SPRING_DATASOURCE_USERNAME=${DB_USER:-order_user}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - JAVA_OPTS=-Xms192m -Xmx256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      service-discovery:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Inventory Service
+  inventory-service:
+    image: ${DOCKER_USERNAME}/ecommerce-inventory-service:latest
+    container_name: ecommerce-inventory-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,prod
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/inventory_service
+      - SPRING_DATASOURCE_USERNAME=${DB_USER:-inventory_user}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JAVA_OPTS=-Xms192m -Xmx256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      service-discovery:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Lightweight monitoring with Prometheus (optional - can be disabled if resources are tight)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ecommerce-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=24h'
+      - '--storage.tsdb.retention.size=512MB'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ecommerce-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  kafka_data:
+    driver: local
+  prometheus_data:
+    driver: local
+
+networks:
+  ecommerce-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

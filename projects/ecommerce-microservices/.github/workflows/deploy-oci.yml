@@ -1,0 +1,109 @@
+name: Deploy to OCI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+
+env:
+  JAVA_VERSION: '17'
+  DOCKER_REGISTRY: docker.io
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build all services
+      run: ./gradlew clean build -x test
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker images
+      run: |
+        # Define services
+        services=("api-gateway" "order-service" "inventory-service" "service-discovery")
+        
+        # Build and push each service
+        for service in "${services[@]}"; do
+          echo "Building $service..."
+          
+          # Build Docker image
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag ${{ secrets.DOCKER_USERNAME }}/ecommerce-${service}:latest \
+            --tag ${{ secrets.DOCKER_USERNAME }}/ecommerce-${service}:${{ github.sha }} \
+            --push \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --build-arg JAR_FILE=build/libs/${service}-1.0.0-boot.jar \
+            ./${service}
+        done
+
+    - name: Copy files to OCI instance
+      uses: appleboy/scp-action@v0.1.5
+      with:
+        host: ${{ secrets.OCI_HOST }}
+        username: ${{ secrets.OCI_USERNAME }}
+        key: ${{ secrets.OCI_SSH_KEY }}
+        source: |
+          docker-compose.prod.yml
+          scripts/deploy-oci.sh
+          .env.production
+        target: ~/ecommerce-app
+        strip_components: 0
+
+    - name: Deploy to OCI
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.OCI_HOST }}
+        username: ${{ secrets.OCI_USERNAME }}
+        key: ${{ secrets.OCI_SSH_KEY }}
+        script: |
+          cd ~/ecommerce-app
+          
+          # Make deploy script executable
+          chmod +x scripts/deploy-oci.sh
+          
+          # Run deployment
+          ./scripts/deploy-oci.sh ${{ secrets.DOCKER_USERNAME }} ${{ github.sha }}
+          
+          # Health check
+          sleep 30
+          docker-compose -f docker-compose.prod.yml ps
+          
+          # Basic health verification
+          curl -f http://localhost:8888/actuator/health || exit 1
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Deployment successful!"
+        else
+          echo "❌ Deployment failed!"
+        fi
